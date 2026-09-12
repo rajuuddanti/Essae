@@ -4,7 +4,7 @@
             "outputFile": "com.mahamart.essae.app-mergeDebugResources-48:/values-sk/values-sk.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\uddan\\.gradle\\caches\\transforms-4\\96211500591de0637c655eba2c72cd8c\\transformed\\ui-release\\res\\values-sk\\values-sk.xml",
+                    "source": "C:\\Users\\uddan\\.gradle\\wrapper\\dists\\gradle-8.7-bin\\12345\\wrapper\\dists\\gradle-8.7-bin\\caches\\transforms-4\\96211500591de0637c655eba2c72cd8c\\transformed\\ui-release\\res\\values-sk\\values-sk.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -21,7 +21,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\uddan\\.gradle\\caches\\transforms-4\\1ff58ff634ed0a2cb4d3c2383a14ce25\\transformed\\core-1.13.0\\res\\values-sk\\values-sk.xml",
+                    "source": "C:\\Users\\uddan\\.gradle\\wrapper\\dists\\gradle-8.7-bin\\12345\\wrapper\\dists\\gradle-8.7-bin\\caches\\transforms-4\\1ff58ff634ed0a2cb4d3c2383a14ce25\\transformed\\core-1.13.0\\res\\values-sk\\values-sk.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -38,7 +38,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\uddan\\.gradle\\caches\\transforms-4\\f9cd6362e19ab01749c357eab0f6e875\\transformed\\material3-release\\res\\values-sk\\values-sk.xml",
+                    "source": "C:\\Users\\uddan\\.gradle\\wrapper\\dists\\gradle-8.7-bin\\12345\\wrapper\\dists\\gradle-8.7-bin\\caches\\transforms-4\\f9cd6362e19ab01749c357eab0f6e875\\transformed\\material3-release\\res\\values-sk\\values-sk.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -55,7 +55,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\uddan\\.gradle\\caches\\transforms-4\\227d02e15630061d9951ec960e4f2e48\\transformed\\foundation-release\\res\\values-sk\\values-sk.xml",
+                    "source": "C:\\Users\\uddan\\.gradle\\wrapper\\dists\\gradle-8.7-bin\\12345\\wrapper\\dists\\gradle-8.7-bin\\caches\\transforms-4\\227d02e15630061d9951ec960e4f2e48\\transformed\\foundation-release\\res\\values-sk\\values-sk.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",

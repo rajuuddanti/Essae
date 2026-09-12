@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mahamart.essae"
     android:versionCode="1"
-    android:versionName="0.1.0" >
+    android:versionName="4.0.0" >
 
     <uses-sdk
         android:minSdkVersion="26"
@@ -21,8 +21,9 @@
         android:appComponentFactory="androidx.core.app.CoreComponentFactory"
         android:debuggable="true"
         android:extractNativeLibs="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="MahaMart Scale Manager"
-        android:testOnly="true"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.EssaeAndroid"
         android:usesCleartextTraffic="true" >
         <activity

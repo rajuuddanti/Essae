@@ -6,7 +6,9 @@
     <application
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.EssaeAndroid"
-        android:label="MahaMart Scale Manager">
+        android:label="MahaMart Scale Manager"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
 
         <activity
             android:name=".LabelDesignActivity"

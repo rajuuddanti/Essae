@@ -9,5 +9,5 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories { google(); mavenCentral() }
 }
-rootProject.name = "EssaeAndroid-v3"
+rootProject.name = "EssaeAndroid-v4"
 include(":app")
