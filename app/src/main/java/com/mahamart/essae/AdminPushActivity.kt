@@ -306,14 +306,6 @@ private fun AdminPushScreen(
                                     store.storeCode + " — " + store.storeName,
                                     fontWeight = FontWeight.SemiBold
                                 )
-                                Text(
-                                    if (store.currentPrice == null)
-                                        "No confirmed scale price"
-                                    else
-                                        "Last uploaded: " +
-                                            (store.lastUploadedAt ?: "unknown"),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
                             }
 
                             Text(
