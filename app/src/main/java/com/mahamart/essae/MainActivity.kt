@@ -428,6 +428,33 @@ fun EssaeApp(db: AppDatabase) {
         )
 
     LaunchedEffect(Unit) {
+        val seedPrefs = context.getSharedPreferences(
+            "data_seed",
+            Context.MODE_PRIVATE
+        )
+
+        if (!seedPrefs.getBoolean("plu_master_seeded", false)) {
+            if (db.pluDao().count() == 0) {
+                runCatching {
+                    val bundledCsv = context.assets.open("PLU_MASTER.csv")
+                        .bufferedReader()
+                        .use { it.readText() }
+
+                    val bundledPlus = CsvImporter.parse(bundledCsv)
+
+                    if (bundledPlus.isNotEmpty()) {
+                        db.pluDao().upsertAll(
+                            bundledPlus.map { it.copy(unitPrice = 0.0) }
+                        )
+                    }
+                }
+            }
+
+            seedPrefs.edit()
+                .putBoolean("plu_master_seeded", true)
+                .apply()
+        }
+
         vm.retryUnsyncedAudits()
     }
 
