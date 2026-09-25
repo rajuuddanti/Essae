@@ -578,6 +578,31 @@ fun EssaeApp(db: AppDatabase) {
                                 context.startActivity(
                                     Intent(
                                         context,
+                                        StoreDeviceRegistrationActivity::class.java
+                                    )
+                                )
+                            }
+
+                        ) {
+
+                            Text(
+                                "DEVICE REG",
+                                color =
+                                    MaterialTheme
+                                        .colorScheme
+                                        .primary,
+                                fontWeight =
+                                    FontWeight.Bold
+                            )
+                        }
+
+                        TextButton(
+
+                            onClick = {
+
+                                context.startActivity(
+                                    Intent(
+                                        context,
                                         LabelDesignActivity::class.java
                                     )
                                 )
