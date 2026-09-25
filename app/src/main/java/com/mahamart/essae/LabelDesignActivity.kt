@@ -81,12 +81,12 @@ fun LabelDesignScreen() {
         mutableStateOf(prefs.scalePort)
     }
 
-    var selectedFileName by remember {
-        mutableStateOf<String?>(null)
+    var selectedSlot by remember {
+        mutableStateOf(LabelDesignStore.Slot.WEIGHT_ONLY)
     }
 
-    var selectedFileUri by remember {
-        mutableStateOf<Uri?>(null)
+    var selectedFileName by remember {
+        mutableStateOf(LabelDesignStore.displayFileName(LabelDesignStore.Slot.WEIGHT_ONLY))
     }
 
     var status by remember {
@@ -105,26 +105,42 @@ fun LabelDesignScreen() {
         EssaeLabelTransport()
     }
 
+    LaunchedEffect(Unit) {
+        runCatching {
+            LabelDesignStore.ensureBundled(context)
+        }.onFailure {
+            status = "DESIGN LOAD ERROR"
+            connectionState = ConnectionState.ERROR
+        }
+    }
+
     val filePicker =
         rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument()
         ) { uri: Uri? ->
 
             if (uri != null) {
-
-                selectedFileUri = uri
-
-                selectedFileName =
-                    getDisplayName(
+                try {
+                    LabelDesignStore.importInto(
                         context,
+                        selectedSlot,
                         uri
-                    ) ?: "Selected label design"
+                    )
 
-                status =
-                    "READY"
+                    selectedFileName =
+                        LabelDesignStore.displayFileName(selectedSlot)
 
-                connectionState =
-                    ConnectionState.READY
+                    status =
+                        selectedSlot.title.uppercase() + " REPLACED"
+
+                    connectionState =
+                        ConnectionState.READY
+
+                } catch (_: Exception) {
+                    status = "IMPORT ERROR"
+                    connectionState = ConnectionState.ERROR
+                    playErrorFeedback(context)
+                }
             }
         }
 
@@ -455,95 +471,96 @@ fun LabelDesignScreen() {
                     }
                 }
 
-                // ---------------------------------------------------------
-                // LABEL FILE
-                // ---------------------------------------------------------
-
                 LabelSectionTitle(
-                    "LABEL FILE",
-                    "Select a captured Essae label design file"
+                    "LABEL DESIGN",
+                    "Choose one of the two preloaded designs"
                 )
 
-                OutlinedButton(
-
-                    onClick = {
-
-                        filePicker.launch(
-                            arrayOf("*/*")
-                        )
-                    },
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    shape =
-                        RoundedCornerShape(6.dp)
-
+                TabRow(
+                    selectedTabIndex =
+                        selectedSlot.ordinal
                 ) {
 
-                    Text(
-                        "SELECT LABEL DESIGN",
+                    LabelDesignStore.Slot.values().forEach { slot ->
 
-                        fontWeight =
-                            FontWeight.Bold
-                    )
-                }
-
-                Card(
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Color.White
-                        ),
-
-                    border =
-                        BorderStroke(
-                            1.dp,
-                            scaleBorderColor()
-                        ),
-
-                    shape =
-                        RoundedCornerShape(8.dp)
-
-                ) {
-
-                    Column(
-                        Modifier.padding(12.dp)
-                    ) {
-
-                        Text(
-                            "SELECTED DESIGN",
-
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .labelSmall,
-
-                            fontWeight =
-                                FontWeight.Bold,
-
-                            color =
-                                scaleTextSecondaryColor()
-                        )
-
-                        Spacer(
-                            Modifier.height(4.dp)
-                        )
-
-                        Text(
-                            selectedFileName
-                                ?: "No label design selected"
+                        Tab(
+                            selected = selectedSlot == slot,
+                            onClick = {
+                                selectedSlot = slot
+                                selectedFileName =
+                                    LabelDesignStore.displayFileName(slot)
+                                status = "READY"
+                                connectionState = ConnectionState.READY
+                            },
+                            text = {
+                                Text(
+                                    slot.title,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         )
                     }
                 }
 
-                // ---------------------------------------------------------
-                // UPLOAD
-                // ---------------------------------------------------------
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        scaleBorderColor()
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            selectedSlot.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = scaleDarkColor()
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(selectedFileName)
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            if (selectedSlot ==
+                                LabelDesignStore.Slot.WEIGHT_ONLY
+                            ) {
+                                "Weight-only label"
+                            } else {
+                                "Weight + ₹ price label"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scaleTextSecondaryColor()
+                        )
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        filePicker.launch(
+                            arrayOf(
+                                "text/plain",
+                                "application/octet-stream",
+                                "*/*"
+                            )
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        "IMPORT / REPLACE DESIGN",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 Button(
 
@@ -551,24 +568,6 @@ fun LabelDesignScreen() {
                         mahaMartButtonColors(),
 
                     onClick = {
-
-                        val uri =
-                            selectedFileUri
-
-                        if (uri == null) {
-
-                            status =
-                                "NO DESIGN SELECTED"
-
-                            connectionState =
-                                ConnectionState.ERROR
-
-                            playErrorFeedback(
-                                context
-                            )
-
-                            return@Button
-                        }
 
                         val portNumber =
                             port.toIntOrNull()
@@ -601,12 +600,10 @@ fun LabelDesignScreen() {
                             try {
 
                                 val designBytes =
-                                    context
-                                        .contentResolver
-                                        .openInputStream(uri)
-                                        ?.use {
-                                            it.readBytes()
-                                        }
+                                    LabelDesignStore.read(
+                                        context,
+                                        selectedSlot
+                                    )
 
                                 if (
                                     designBytes == null ||
@@ -693,8 +690,7 @@ fun LabelDesignScreen() {
                     },
 
                     enabled =
-                        selectedFileUri != null &&
-                                !isBusy,
+                        !isBusy,
 
                     modifier =
                         Modifier.fillMaxWidth(),
