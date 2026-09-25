@@ -13,6 +13,7 @@ This directory is the durable handoff for the MahaMart / Essae Android scale-man
 8. 12_CURRENT_STATE_2026-09-24.md
 9. 13_DEPLOYMENT_AND_BUILD_LOG.md
 10. 14_PROJECT_CHANGELOG.md
+11. 18_MULTI_DEVICE_REGISTRATION.md
 
 Supporting documents cover reports, conversation decisions, artifacts, resume procedure, GitHub workflow, security, and testing.
 
