@@ -219,7 +219,7 @@ begin
         now(),
         now()
     )
-    on conflict (device_id)
+    on conflict on constraint store_devices_device_id_unique
     do update set
         store_id = excluded.store_id,
         device_name = excluded.device_name,
