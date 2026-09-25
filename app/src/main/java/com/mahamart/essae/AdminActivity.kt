@@ -156,6 +156,7 @@ private fun AdminDashboard(
     onClose: () -> Unit
 ) {
     var showDeviceRegistration by rememberSaveable { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     if (showDeviceRegistration) {
         AdminDeviceRegistration(
@@ -192,7 +193,6 @@ private fun AdminDashboard(
 
         Button(
             onClick = {
-                val context = androidx.compose.ui.platform.LocalContext.current
                 context.startActivity(
                     Intent(
                         context,
