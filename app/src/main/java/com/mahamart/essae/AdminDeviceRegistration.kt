@@ -39,6 +39,7 @@ fun AdminDeviceRegistration(
     var generating by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf("") }
     var selectedStore by remember { mutableStateOf<SupabaseAuth.StoreOption?>(null) }
+    var showStorePicker by rememberSaveable { mutableStateOf(true) }
     var registrationCode by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -77,7 +78,7 @@ fun AdminDeviceRegistration(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { selectedStore = selectedStore ?: stores.first() },
+                    .clickable { showStorePicker = true },
                 colors = CardDefaults.cardColors()
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -151,16 +152,26 @@ fun AdminDeviceRegistration(
         }
     }
 
-    if (selectedStore == null && stores.isNotEmpty()) {
+    if (showStorePicker && stores.isNotEmpty()) {
         StorePickerDialog(
             stores = stores,
-            onSelect = { selectedStore = it },
-            onDismiss = { selectedStore = stores.first() }
+            onSelect = {
+                selectedStore = it
+                registrationCode = ""
+                error = ""
+                showStorePicker = false
+            },
+            onDismiss = {
+                showStorePicker = false
+                if (selectedStore == null) {
+                    selectedStore = stores.first()
+                }
+            }
         )
     }
 
     if (generating && selectedStore != null) {
-        LaunchedEffect(selectedStore?.code) {
+        LaunchedEffect(selectedStore?.code, generating) {
             auth.generateStoreDeviceCode(
                 selectedStore!!.code,
                 60
