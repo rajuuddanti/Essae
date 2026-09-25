@@ -435,6 +435,36 @@ begin
 
         end if;
 
+        -- TEMP TEST MODE (2026-09-25):
+        -- Reflect the phone's local price change immediately in the
+        -- admin current-price record so Admin Push can verify
+        -- store -> admin visibility before actual scale upload.
+        insert into public.store_price_current (
+            device_ip,
+            plu_no,
+            plu_name,
+            unit_price,
+            scale_ip,
+            device_id,
+            last_uploaded_at
+        )
+        values (
+            p_device_ip,
+            (item->>'plu_no')::integer,
+            coalesce(item->>'plu_name', ''),
+            (item->>'new_price')::numeric,
+            coalesce(p_scale_ip, ''),
+            coalesce(p_device_id, ''),
+            now()
+        )
+        on conflict (device_ip, plu_no)
+        do update set
+            plu_name = excluded.plu_name,
+            unit_price = excluded.unit_price,
+            scale_ip = excluded.scale_ip,
+            device_id = excluded.device_id,
+            last_uploaded_at = excluded.last_uploaded_at;
+
         affected := affected + 1;
     end loop;
 
