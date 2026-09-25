@@ -18,16 +18,26 @@ Added store-code + device-ID registration, one-time registration codes, device l
 ## Registration bug fix
 Fixed the registration RPC conflict ambiguity by using the explicit `store_devices_device_id_unique` constraint.
 
-## 2026-09-25 checkpoint
-Registration and Store/Device Mapping are verified end-to-end. The existing Essae transport/upload path remains unchanged.
+## Admin Push checkpoint — 2026-09-25
+Added the first functional Admin Push module on `feature/admin-device-registration`:
+- Dashboard entry.
+- PLU/SKU/item search from local PLU data.
+- New price entry.
+- All-store or selected-store targeting.
+- Confirmation dialog.
+- `admin_publish_price_update` Supabase call.
+- Returned update ID / error display.
 
-Next milestone:
-1. Admin Push UI
-2. Device-level Store Sync
-3. Persistent RED/PENDING state
-4. Physical upload cloud lifecycle
-5. Reports/export
-6. Multi-device end-to-end tests
+Status: **implemented, not yet build/device-tested**.
+
+## Next milestones
+1. Build/device-test Admin Push.
+2. Verify Supabase update header and targets.
+3. Device-level Store Sync.
+4. Persistent RED/PENDING state.
+5. Physical upload cloud lifecycle.
+6. Reports/export.
+7. Multi-device end-to-end testing.
 
 ## Guardrails
 - Do not rewrite `EssaeTransport.kt`.
