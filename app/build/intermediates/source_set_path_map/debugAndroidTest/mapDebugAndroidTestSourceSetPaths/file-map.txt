@@ -1,4 +1,0 @@
-com.mahamart.essae.test.app-androidTest-0 D:\Essae Android App\MahaMart_Scale_Manager_v4\finalprint\app\build\generated\res\resValues\androidTest\debug
-com.mahamart.essae.test.app-mergeDebugAndroidTestResources-1 D:\Essae Android App\MahaMart_Scale_Manager_v4\finalprint\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
-com.mahamart.essae.test.app-mergeDebugAndroidTestResources-2 D:\Essae Android App\MahaMart_Scale_Manager_v4\finalprint\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
-com.mahamart.essae.test.app-debugAndroidTest-3 D:\Essae Android App\MahaMart_Scale_Manager_v4\finalprint\app\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources

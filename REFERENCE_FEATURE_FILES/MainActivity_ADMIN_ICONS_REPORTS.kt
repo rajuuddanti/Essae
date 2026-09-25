@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,12 +20,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -32,6 +34,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.MaterialTheme
@@ -62,11 +65,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mahamart.essae.data.AppDatabase
 import com.mahamart.essae.data.Plu
 import com.mahamart.essae.data.PluDao
-import com.mahamart.essae.data.PriceChangeAudit
-import com.mahamart.essae.data.PriceChangeAuditDao
-import com.mahamart.essae.cloud.ManualPriceAuditSync
+import com.mahamart.essae.cloud.ManagerPriceUpdate
+import com.mahamart.essae.cloud.Profile
+import com.mahamart.essae.cloud.StoreRow
+import com.mahamart.essae.cloud.SupabaseRest
 import com.mahamart.essae.network.EssaeTransport
 import com.mahamart.essae.util.CsvImporter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -117,13 +122,30 @@ class StorePrefs(context: Context) {
                 .putString("scalePort", value)
                 .apply()
         }
+
+    fun getPendingManagerPluNumbers(storeId: String): Set<Int> =
+        prefs.getStringSet(
+            "pending_manager_plu_$storeId",
+            emptySet()
+        )?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+
+    fun setPendingManagerPluNumbers(
+        storeId: String,
+        numbers: Set<Int>
+    ) {
+        prefs.edit()
+            .putStringSet(
+                "pending_manager_plu_$storeId",
+                numbers.map(Int::toString).toSet()
+            )
+            .apply()
+    }
 }
 
 class MainVm(
     private val dao: PluDao,
-    private val auditDao: PriceChangeAuditDao,
     private val prefs: StorePrefs,
-    context: Context
+    private val api: SupabaseRest
 ) : ViewModel() {
 
     val plus = dao.observeAll().stateIn(
@@ -145,11 +167,147 @@ class MainVm(
         private set
 
     private val transport = EssaeTransport()
-    private val auditSync = ManualPriceAuditSync(context.applicationContext)
+
+    var profile by mutableStateOf<Profile?>(null)
+        private set
+
+    var stores by mutableStateOf<List<StoreRow>>(emptyList())
+        private set
+
+    private var cloudPlusIds: Map<Int, String> = emptyMap()
+
+    var cloudUpdateCount by mutableStateOf(0)
+        private set
+
+    fun loadSession(onInvalidSession: () -> Unit) {
+        viewModelScope.launch {
+            api.getProfile().fold(
+                onSuccess = { p ->
+                    if (!p.active ||
+                        (p.role != "ADMIN" && p.role != "MANAGER")
+                    ) {
+                        api.clearSession()
+                        onInvalidSession()
+                        return@fold
+                    }
+
+                    profile = p
+
+                    if (p.role == "MANAGER") {
+                        p.storeId?.let { storeId ->
+                            changedPluNumbers =
+                                prefs.getPendingManagerPluNumbers(storeId)
+                        }
+                    }
+
+                    if (p.role == "ADMIN") {
+                        api.getStores().onSuccess { stores = it }
+                        api.getPlus().onSuccess { rows ->
+                            cloudPlusIds = rows.associate { it.number to it.id }
+                        }
+                    } else {
+                        syncPendingManagerUpdates()
+                    }
+                },
+                onFailure = {
+                    api.clearSession()
+                    onInvalidSession()
+                }
+            )
+        }
+    }
+
+    private suspend fun syncPendingManagerUpdates() {
+        val result = api.getPendingPriceUpdates()
+        result.fold(
+            onSuccess = { updates ->
+                cloudUpdateCount = updates.size
+
+                if (updates.isEmpty()) return@fold
+
+                val local = dao.observeAll().first().associateBy { it.number }
+                var applied = 0
+                var failed = 0
+
+                for (update in updates) {
+                    val existing = local[update.pluNo]
+                    if (existing == null) {
+                        failed++
+                        continue
+                    }
+
+                    dao.upsert(existing.copy(unitPrice = update.newPrice))
+
+                    val storeId = profile?.storeId
+                    if (storeId != null) {
+                        val pending =
+                            prefs.getPendingManagerPluNumbers(storeId) +
+                                    update.pluNo
+                        prefs.setPendingManagerPluNumbers(storeId, pending)
+                        changedPluNumbers = pending
+                    }
+
+                    api.applyPriceUpdate(update.targetId).fold(
+                        onSuccess = {
+                            applied++
+                        },
+                        onFailure = { failed++ }
+                    )
+                }
+
+                cloudUpdateCount = failed
+
+                status = when {
+                    failed == 0 -> "PRICE UPDATE SYNCED — $applied SKU(s) CHANGED"
+                    applied == 0 -> "PRICE UPDATE FAILED — $failed SKU(s)"
+                    else -> "PRICE SYNC — $applied APPLIED, $failed FAILED"
+                }
+            },
+            onFailure = {
+                status = "PRICE UPDATE CHECK FAILED: ${it.message ?: "Unknown error"}"
+            }
+        )
+    }
+
+    fun publishAdminPrice(
+        plu: Plu,
+        price: Double,
+        storeIds: List<String>,
+        applyAll: Boolean,
+        onFinished: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            status = "Publishing PLU ${plu.number} price update..."
+
+            val pluId = cloudPlusIds[plu.number]
+            if (pluId == null) {
+                status = "PLU ${plu.number} is not available in cloud master."
+                onFinished("")
+                return@launch
+            }
+
+            api.publishPrice(
+                pluId = pluId,
+                newPrice = price,
+                storeIds = storeIds,
+                applyAll = applyAll,
+                description = "Admin price update for PLU ${plu.number}"
+            ).fold(
+                onSuccess = { result ->
+                    status = "PRICE UPDATE PUBLISHED — PLU ${plu.number}"
+                    onFinished(result)
+                },
+                onFailure = {
+                    status = "PUBLISH FAILED: ${it.message ?: "Unknown error"}"
+                    onFinished("")
+                }
+            )
+        }
+    }
 
     /*
-     * UI marker for the current local edit session.
-     * A separate Room audit keeps the actual change history.
+     * Session-only changed SKU tracking.
+     * Nothing is written to Room.
      */
     var changedPluNumbers by mutableStateOf(
         emptySet<Int>()
@@ -224,10 +382,15 @@ class MainVm(
             dao.upsertAll(imported)
 
             /*
-             * A newly imported CSV starts a fresh
-             * visual editing session.
+             * A newly imported CSV starts a fresh manual-edit session.
+             * Manager cloud updates that still need scale upload remain red.
              */
-            changedPluNumbers = emptySet()
+            changedPluNumbers =
+                if (profile?.role == "MANAGER" && profile?.storeId != null) {
+                    prefs.getPendingManagerPluNumbers(profile!!.storeId!!)
+                } else {
+                    emptySet()
+                }
 
             csvStatus =
                 "CSV loaded: ${imported.size} PLUs | " +
@@ -282,8 +445,21 @@ class MainVm(
                                 "PLU ${plu.number} ${plu.name}"
 
                 }.fold(
-                    { it },
-                    {
+                    onSuccess = { result ->
+                        val currentProfile = profile
+                        if (
+                            currentProfile?.role == "MANAGER" &&
+                            currentProfile.storeId != null
+                        ) {
+                            prefs.setPendingManagerPluNumbers(
+                                currentProfile.storeId,
+                                emptySet()
+                            )
+                            changedPluNumbers = emptySet()
+                        }
+                        result
+                    },
+                    onFailure = {
                         "Direct bulk upload failed: ${
                             it.message ?: "Unknown error"
                         }"
@@ -312,7 +488,8 @@ class MainVm(
             return
         }
 
-        val changed = plu.unitPrice != price
+        val changed =
+            plu.unitPrice != price
 
         viewModelScope.launch {
 
@@ -326,29 +503,20 @@ class MainVm(
                 changedPluNumbers =
                     changedPluNumbers + plu.number
 
-                val audit = PriceChangeAudit(
-                    pluNo = plu.number,
-                    pluName = plu.name,
-                    oldPrice = plu.unitPrice,
-                    newPrice = price,
-                    source = "MANUAL",
-                    status = "PENDING",
-                    deviceIp = auditSync.deviceIp(),
-                    deviceId = auditSync.deviceId(),
-                    scaleIp = host
-                )
-
-                val auditId = auditDao.insert(audit)
-                val stored = audit.copy(id = auditId)
-
-                if (auditSync.pushManualChange(stored)) {
-                    auditDao.markCloudSynced(listOf(auditId))
-                    status =
-                        "PLU ${plu.number} manually changed — audit recorded."
-                } else {
-                    status =
-                        "PLU ${plu.number} manually changed — audit saved; cloud sync pending."
+                val currentProfile = profile
+                if (
+                    currentProfile?.role == "MANAGER" &&
+                    currentProfile.storeId != null
+                ) {
+                    prefs.setPendingManagerPluNumbers(
+                        currentProfile.storeId,
+                        changedPluNumbers
+                    )
                 }
+
+                status =
+                    "PLU ${plu.number} price changed to " +
+                            "₹${String.format("%.2f", price)}."
             } else {
                 status =
                     "PLU ${plu.number} price unchanged."
@@ -356,23 +524,14 @@ class MainVm(
         }
     }
 
-    fun retryUnsyncedAudits() {
-        viewModelScope.launch {
-            val pending = auditDao.getUnsynced()
-            if (pending.isEmpty()) return@launch
-
-            val syncedIds = mutableListOf<Long>()
-            for (audit in pending) {
-                if (auditSync.pushManualChange(audit)) {
-                    syncedIds += audit.id
-                }
-            }
-
-            if (syncedIds.isNotEmpty()) {
-                auditDao.markCloudSynced(syncedIds)
-                status = "${syncedIds.size} manual audit(s) synced."
-            }
-        }
+    fun logout(onLoggedOut: () -> Unit) {
+        api.clearSession()
+        profile = null
+        stores = emptyList()
+        cloudPlusIds = emptyMap()
+        cloudUpdateCount = 0
+        // Pending manager scale-upload markers intentionally survive logout.
+        onLoggedOut()
     }
 
     fun clear() {
@@ -412,20 +571,26 @@ fun EssaeApp(db: AppDatabase) {
 
                         return MainVm(
                             db.pluDao(),
-                            db.priceChangeAuditDao(),
                             StorePrefs(context),
-                            context
+                            SupabaseRest(context)
                         ) as T
                     }
                 }
         )
 
-    LaunchedEffect(Unit) {
-        vm.retryUnsyncedAudits()
-    }
-
     val pluList by
     vm.plus.collectAsState()
+
+    LaunchedEffect(Unit) {
+        vm.loadSession {
+            context.startActivity(
+                Intent(context, LoginActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+            )
+        }
+    }
 
     var searchQuery by
     rememberSaveable {
@@ -547,18 +712,8 @@ fun EssaeApp(db: AppDatabase) {
 
                             Text(
                                 "Scale Manager",
-                                modifier = Modifier.pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onLongPress = {
-                                            context.startActivity(
-                                                Intent(
-                                                    context,
-                                                    AdminActivity::class.java
-                                                )
-                                            )
-                                        }
-                                    )
-                                },
+                                maxLines = 1,
+                                softWrap = false,
                                 style =
                                     MaterialTheme
                                         .typography
@@ -571,29 +726,232 @@ fun EssaeApp(db: AppDatabase) {
 
                     actions = {
 
-                        TextButton(
+                        if (vm.profile?.role == "ADMIN") {
 
-                            onClick = {
-
-                                context.startActivity(
-                                    Intent(
-                                        context,
-                                        LabelDesignActivity::class.java
+                            // Label Design icon
+                            IconButton(
+                                onClick = {
+                                    context.startActivity(
+                                        Intent(
+                                            context,
+                                            LabelDesignActivity::class.java
+                                        )
                                     )
-                                )
+                                }
+                            ) {
+                                Canvas(
+                                    modifier = Modifier
+                                        .width(24.dp)
+                                        .height(24.dp)
+                                ) {
+                                    val stroke = 2.2f
+                                    val tagLeft = size.width * 0.12f
+                                    val tagTop = size.height * 0.20f
+                                    val tagRight = size.width * 0.86f
+                                    val tagBottom = size.height * 0.80f
+
+                                    drawRoundRect(
+                                        color = scaleRedForUi(),
+                                        topLeft =
+                                            androidx.compose.ui.geometry.Offset(
+                                                tagLeft,
+                                                tagTop
+                                            ),
+                                        size =
+                                            androidx.compose.ui.geometry.Size(
+                                                tagRight - tagLeft,
+                                                tagBottom - tagTop
+                                            ),
+                                        cornerRadius =
+                                            androidx.compose.ui.geometry.CornerRadius(
+                                                3.dp.toPx(),
+                                                3.dp.toPx()
+                                            ),
+                                        style =
+                                            androidx.compose.ui.graphics.drawscope.Stroke(
+                                                width = stroke
+                                            )
+                                    )
+
+                                    drawCircle(
+                                        color = scaleRedForUi(),
+                                        radius = 1.8.dp.toPx(),
+                                        center =
+                                            androidx.compose.ui.geometry.Offset(
+                                                tagRight - 5.dp.toPx(),
+                                                tagTop + 5.dp.toPx()
+                                            )
+                                    )
+
+                                    drawLine(
+                                        color = scaleRedForUi(),
+                                        start =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.28f,
+                                                size.height * 0.50f
+                                            ),
+                                        end =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.66f,
+                                                size.height * 0.50f
+                                            ),
+                                        strokeWidth = stroke
+                                    )
+                                }
                             }
 
-                        ) {
+                            // Reports icon
+                            IconButton(
+                                onClick = {
+                                    context.startActivity(
+                                        Intent(
+                                            context,
+                                            ReportsActivity::class.java
+                                        )
+                                    )
+                                }
+                            ) {
+                                Canvas(
+                                    modifier = Modifier
+                                        .width(24.dp)
+                                        .height(24.dp)
+                                ) {
+                                    val stroke = 2.2f
+                                    val baseY = size.height * 0.82f
 
-                            Text(
-                                "LABEL DESIGN",
-                                color =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .primary,
-                                fontWeight =
-                                    FontWeight.Bold
-                            )
+                                    drawLine(
+                                        color = scaleRedForUi(),
+                                        start =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.16f,
+                                                baseY
+                                            ),
+                                        end =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.88f,
+                                                baseY
+                                            ),
+                                        strokeWidth = stroke
+                                    )
+
+                                    drawLine(
+                                        color = scaleRedForUi(),
+                                        start =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.16f,
+                                                baseY
+                                            ),
+                                        end =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.16f,
+                                                size.height * 0.16f
+                                            ),
+                                        strokeWidth = stroke
+                                    )
+
+                                    drawRoundRect(
+                                        color = scaleRedForUi(),
+                                        topLeft =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.28f,
+                                                size.height * 0.54f
+                                            ),
+                                        size =
+                                            androidx.compose.ui.geometry.Size(
+                                                size.width * 0.12f,
+                                                size.height * 0.28f
+                                            ),
+                                        cornerRadius =
+                                            androidx.compose.ui.geometry.CornerRadius(
+                                                1.dp.toPx(),
+                                                1.dp.toPx()
+                                            )
+                                    )
+
+                                    drawRoundRect(
+                                        color = scaleRedForUi(),
+                                        topLeft =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.46f,
+                                                size.height * 0.38f
+                                            ),
+                                        size =
+                                            androidx.compose.ui.geometry.Size(
+                                                size.width * 0.12f,
+                                                size.height * 0.44f
+                                            ),
+                                        cornerRadius =
+                                            androidx.compose.ui.geometry.CornerRadius(
+                                                1.dp.toPx(),
+                                                1.dp.toPx()
+                                            )
+                                    )
+
+                                    drawRoundRect(
+                                        color = scaleRedForUi(),
+                                        topLeft =
+                                            androidx.compose.ui.geometry.Offset(
+                                                size.width * 0.64f,
+                                                size.height * 0.22f
+                                            ),
+                                        size =
+                                            androidx.compose.ui.geometry.Size(
+                                                size.width * 0.12f,
+                                                size.height * 0.60f
+                                            ),
+                                        cornerRadius =
+                                            androidx.compose.ui.geometry.CornerRadius(
+                                                1.dp.toPx(),
+                                                1.dp.toPx()
+                                            )
+                                    )
+                                }
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                vm.logout {
+                                    context.startActivity(
+                                        Intent(context, LoginActivity::class.java).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                    Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        }
+                                    )
+                                }
+                            }
+                        ) {
+                            Canvas(
+                                modifier = Modifier
+                                    .width(24.dp)
+                                    .height(24.dp)
+                            ) {
+                                val stroke = 2.5f
+
+                                drawArc(
+                                    color = scaleRedForUi(),
+                                    startAngle = -50f,
+                                    sweepAngle = 280f,
+                                    useCenter = false,
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = stroke
+                                    )
+                                )
+
+                                drawLine(
+                                    color = scaleRedForUi(),
+                                    start = androidx.compose.ui.geometry.Offset(
+                                        x = size.width / 2f,
+                                        y = 1f
+                                    ),
+                                    end = androidx.compose.ui.geometry.Offset(
+                                        x = size.width / 2f,
+                                        y = size.height * 0.48f
+                                    ),
+                                    strokeWidth = stroke,
+                                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                )
+                            }
                         }
                     }
                 )
@@ -1095,19 +1453,20 @@ fun EssaeApp(db: AppDatabase) {
                     ) { plu ->
 
                         PluCard(
-
                             plu = plu,
-
-                            priceChanged =
-                                plu.number in
-                                        vm.changedPluNumbers,
-
-                            onSavePrice = {
-                                    priceText ->
-
-                                vm.updatePrice(
+                            priceChanged = plu.number in vm.changedPluNumbers,
+                            isAdmin = vm.profile?.role == "ADMIN",
+                            stores = vm.stores,
+                            onSavePrice = { priceText ->
+                                vm.updatePrice(plu, priceText)
+                            },
+                            onPublishAdminPrice = { price, storeIds, applyAll, done ->
+                                vm.publishAdminPrice(
                                     plu,
-                                    priceText
+                                    price,
+                                    storeIds,
+                                    applyAll,
+                                    done
                                 )
                             }
                         )
@@ -1395,7 +1754,10 @@ private fun EmptyPanel(
 fun PluCard(
     plu: Plu,
     priceChanged: Boolean,
-    onSavePrice: (String) -> Unit
+    isAdmin: Boolean,
+    stores: List<StoreRow>,
+    onSavePrice: (String) -> Unit,
+    onPublishAdminPrice: (Double, List<String>, Boolean, (String) -> Unit) -> Unit
 ) {
 
     var showPriceDialog by remember(
@@ -1405,361 +1767,337 @@ fun PluCard(
         mutableStateOf(false)
     }
 
+    var priceText by remember(
+        plu.number,
+        plu.unitPrice,
+        showPriceDialog
+    ) {
+        mutableStateOf(String.format("%.2f", plu.unitPrice))
+    }
+
+    var applyAll by rememberSaveable(plu.number) {
+        mutableStateOf(false)
+    }
+
+    var selectedStores by remember(plu.number) {
+        mutableStateOf<Set<String>>(emptySet())
+    }
+
+    var publishing by rememberSaveable(plu.number) {
+        mutableStateOf(false)
+    }
 
     val cardColor =
-
         if (priceChanged) {
-
-            MaterialTheme
-                .colorScheme
-                .primaryContainer
-
+            MaterialTheme.colorScheme.primaryContainer
         } else {
-
             Color.White
         }
 
-
     val borderColor =
-
         if (priceChanged) {
-
-            MaterialTheme
-                .colorScheme
-                .primary
-
+            MaterialTheme.colorScheme.primary
         } else {
-
             scaleBorderColor()
         }
 
-
     Card(
-
         modifier =
             Modifier
                 .fillMaxWidth()
                 .clickable {
                     showPriceDialog = true
+                    priceText = String.format("%.2f", plu.unitPrice)
                 },
-
         colors =
             CardDefaults.cardColors(
-                containerColor =
-                    cardColor
+                containerColor = cardColor
             ),
-
         border =
             BorderStroke(
-                if (priceChanged) {
-                    2.dp
-                } else {
-                    1.dp
-                },
+                if (priceChanged) 2.dp else 1.dp,
                 borderColor
             ),
-
-        shape =
-            RoundedCornerShape(7.dp)
-
+        shape = RoundedCornerShape(7.dp)
     ) {
-
         Row(
-            modifier =
-                Modifier.padding(12.dp)
+            modifier = Modifier.padding(12.dp)
         ) {
-
-            /*
-             * Small red activity marker.
-             */
             Box(
                 modifier =
                     Modifier
                         .width(4.dp)
                         .height(58.dp)
                         .background(
-                            if (priceChanged) {
-                                scaleRedForUi()
-                            } else {
-                                Color.Transparent
-                            },
+                            if (priceChanged) scaleRedForUi() else Color.Transparent,
                             RoundedCornerShape(2.dp)
                         )
             )
 
-
-            Spacer(
-                Modifier.width(10.dp)
-            )
-
+            Spacer(Modifier.width(10.dp))
 
             Column(
-                modifier =
-                    Modifier.weight(1f)
+                modifier = Modifier.weight(1f)
             ) {
-
                 Row(
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    horizontalArrangement =
-                        Arrangement.SpaceBetween
-
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-
                     Text(
-
                         "${plu.number}  ${plu.name}",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .titleSmall,
-
-                        fontWeight =
-                            FontWeight.Bold,
-
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
                         color =
-                            if (priceChanged) {
-                                MaterialTheme
-                                    .colorScheme
-                                    .primary
-                            } else {
+                            if (priceChanged)
+                                MaterialTheme.colorScheme.primary
+                            else
                                 scaleDarkColor()
-                            }
                     )
 
-
                     if (priceChanged) {
-
                         Text(
-
                             "CHANGED",
-
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .labelSmall,
-
-                            color =
-                                MaterialTheme
-                                    .colorScheme
-                                    .primary,
-
-                            fontWeight =
-                                FontWeight.Bold
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-
-                Spacer(
-                    Modifier.height(3.dp)
-                )
-
+                Spacer(Modifier.height(3.dp))
 
                 Row(
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    horizontalArrangement =
-                        Arrangement.SpaceBetween
-
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-
                     Text(
-                        "${plu.code}  •  ${
-                            if (plu.uom == 1) {
-                                "PCS"
-                            } else {
-                                "WEIGH"
-                            }
-                        }",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodySmall,
-                        color =
-                            scaleTextSecondaryColor()
+                        "${plu.code}  •  ${if (plu.uom == 1) "PCS" else "WEIGH"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scaleTextSecondaryColor()
                     )
 
-
                     Text(
-
                         "₹${String.format("%.2f", plu.unitPrice)}",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .titleSmall,
-
-                        fontWeight =
-                            FontWeight.Bold,
-
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
                         color =
-                            if (priceChanged) {
-                                MaterialTheme
-                                    .colorScheme
-                                    .primary
-                            } else {
+                            if (priceChanged)
+                                MaterialTheme.colorScheme.primary
+                            else
                                 scaleDarkColor()
-                            }
                     )
                 }
 
-
                 Text(
-
                     if (priceChanged) {
-                        "Price changed • tap to edit"
+                        if (isAdmin) "Price update pending • tap to publish"
+                        else "Price updated • tap to edit"
                     } else {
-                        "Tap to edit price"
+                        if (isAdmin) "Tap to publish price update"
+                        else "Tap to edit price"
                     },
-
-                    style =
-                        MaterialTheme
-                            .typography
-                            .labelSmall,
-
+                    style = MaterialTheme.typography.labelSmall,
                     color =
-                        if (priceChanged) {
-                            MaterialTheme
-                                .colorScheme
-                                .primary
-                        } else {
+                        if (priceChanged)
+                            MaterialTheme.colorScheme.primary
+                        else
                             scaleTextSecondaryColor()
-                        }
                 )
             }
         }
     }
 
-
-    /*
-     * Price editor.
-     */
     if (showPriceDialog) {
-
-        var priceText by remember(
-            plu.number,
-            plu.unitPrice
-        ) {
-
-            mutableStateOf(
-                String.format(
-                    "%.2f",
-                    plu.unitPrice
-                )
-            )
-        }
-
-
         AlertDialog(
-
             onDismissRequest = {
-                showPriceDialog = false
+                if (!publishing) showPriceDialog = false
             },
-
+            containerColor = Color.White,
             title = {
                 Text(
-                    "Update Price — PLU ${plu.number}"
+                    if (isAdmin)
+                        "Publish Price — PLU ${plu.number}"
+                    else
+                        "Update Price — PLU ${plu.number}"
                 )
             },
-
             text = {
-
                 Column(
-                    verticalArrangement =
-                        Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-
                     Text(
                         plu.name,
-                        style =
-                            MaterialTheme
-                                .typography
-                                .titleSmall,
-                        fontWeight =
-                            FontWeight.Bold
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
                     )
 
                     if (priceChanged) {
-
                         Text(
-                            "This SKU was changed during this session.",
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .bodySmall,
-                            color =
-                                MaterialTheme
-                                    .colorScheme
-                                    .primary
+                            if (isAdmin)
+                                "This SKU has a pending local change."
+                            else
+                                "This SKU was changed during this session.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
                     OutlinedTextField(
-
-                        value =
-                            priceText,
-
-                        onValueChange = {
-                            priceText = it
-                        },
-
-                        label = {
-                            Text("Unit Price")
-                        },
-
-                        prefix = {
-                            Text("₹")
-                        },
-
-                        singleLine = true
+                        value = priceText,
+                        onValueChange = { priceText = it },
+                        label = { Text("${if (isAdmin) "New " else "Unit "}Price") },
+                        prefix = { Text("₹") },
+                        singleLine = true,
+                        enabled = !publishing,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                }
-            },
 
-            confirmButton = {
+                    if (isAdmin) {
+                        Divider()
 
-                Button(
-
-                    colors =
-                        mahaMartButtonColors(),
-
-                    onClick = {
-
-                        onSavePrice(
-                            priceText
+                        Text(
+                            "APPLY TO STORES",
+                            fontWeight = FontWeight.Bold
                         )
 
-                        showPriceDialog = false
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("All stores")
+                                Text(
+                                    "Publish this price to every active store",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = scaleTextSecondaryColor()
+                                )
+                            }
+
+                            androidx.compose.material3.Checkbox(
+                                checked = applyAll,
+                                onCheckedChange = {
+                                    if (!publishing) {
+                                        applyAll = it
+                                        if (it) selectedStores = emptySet()
+                                    }
+                                },
+                                enabled = !publishing
+                            )
+                        }
+
+                        if (!applyAll) {
+                            Column(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 360.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(2.dp)
+                            ) {
+                                stores.forEach { store ->
+                                    Row(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .clickable(enabled = !publishing) {
+                                                    selectedStores =
+                                                        if (store.id in selectedStores)
+                                                            selectedStores - store.id
+                                                        else
+                                                            selectedStores + store.id
+                                                }
+                                                .padding(vertical = 2.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                store.code,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                store.name,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+
+                                        androidx.compose.material3.Checkbox(
+                                            checked = store.id in selectedStores,
+                                            onCheckedChange = {
+                                                selectedStores =
+                                                    if (it)
+                                                        selectedStores + store.id
+                                                    else
+                                                        selectedStores - store.id
+                                            },
+                                            enabled = !publishing
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
+                }
+            },
+            confirmButton = {
+                Button(
+                    colors = mahaMartButtonColors(),
+                    enabled = !publishing,
+                    onClick = {
+                        val price =
+                            priceText
+                                .trim()
+                                .replace("₹", "")
+                                .replace(",", "")
+                                .toDoubleOrNull()
 
+                        if (price == null || price < 0) {
+                            return@Button
+                        }
+
+                        if (isAdmin) {
+                            if (!applyAll && selectedStores.isEmpty()) {
+                                return@Button
+                            }
+
+                            publishing = true
+
+                            onPublishAdminPrice(
+                                price,
+                                selectedStores.toList(),
+                                applyAll
+                            ) { result ->
+                                publishing = false
+                                if (result.isNotBlank()) {
+                                    showPriceDialog = false
+                                }
+                            }
+                        } else {
+                            onSavePrice(priceText)
+                            showPriceDialog = false
+                        }
+                    }
                 ) {
-
                     Text(
-                        "SAVE PRICE"
+                        if (publishing)
+                            "PUBLISHING..."
+                        else if (isAdmin)
+                            "PUBLISH PRICE"
+                        else
+                            "SAVE PRICE"
                     )
                 }
             },
-
             dismissButton = {
-
                 TextButton(
+                    enabled = !publishing,
                     onClick = {
                         showPriceDialog = false
                     }
                 ) {
-
-                    Text(
-                        "CANCEL"
-                    )
+                    Text("CANCEL")
                 }
             }
         )
     }
 }
-
