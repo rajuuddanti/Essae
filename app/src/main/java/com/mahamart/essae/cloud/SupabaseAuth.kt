@@ -10,13 +10,7 @@ import org.json.JSONTokener
 import java.net.HttpURLConnection
 import java.net.URL
 
-/**
- * Small dependency-free Supabase Auth client.
- *
- * Store phones do not use this class. It is only used by the hidden Admin area.
- * The publishable key is safe to ship in the Android client; never put a
- * service_role/secret key here.
- */
+/** Dependency-free Supabase Auth/admin client. Store phones do not use this class. */
 class SupabaseAuth(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(
         "supabase_admin_session",
@@ -97,7 +91,7 @@ class SupabaseAuth(context: Context) {
             runCatching {
                 val token = accessToken ?: error("Admin session expired. Sign in again.")
                 val url =
-                    "$baseUrl/rest/v1/stores?select=store_code,store_name&active=eq.true&order=store_code"
+                    "$baseUrl/rest/v1/stores?select=id,store_code,store_name&active=eq.true&order=store_code"
                 val connection = open(url, "GET", token)
                 val response = readResponse(connection)
                 if (connection.responseCode !in 200..299) {
@@ -110,6 +104,7 @@ class SupabaseAuth(context: Context) {
                         val row = rows.getJSONObject(i)
                         add(
                             StoreOption(
+                                id = row.optString("id"),
                                 code = row.optString("store_code"),
                                 name = row.optString("store_name")
                             )
@@ -118,6 +113,44 @@ class SupabaseAuth(context: Context) {
                 }
             }
         }
+
+    suspend fun publishAdminPriceUpdate(
+        applyToAll: Boolean,
+        storeIds: List<String>,
+        items: List<AdminPriceItem>,
+        note: String = ""
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val token = accessToken ?: error("Admin session expired. Sign in again.")
+            require(items.isNotEmpty()) { "At least one price item is required." }
+            if (!applyToAll) require(storeIds.isNotEmpty()) { "Select at least one store." }
+
+            val itemArray = JSONArray()
+            items.forEach { item ->
+                itemArray.put(
+                    JSONObject()
+                        .put("plu_no", item.pluNo)
+                        .put("plu_name", item.pluName)
+                        .put("new_price", item.newPrice)
+                )
+            }
+
+            val storeArray = JSONArray()
+            storeIds.forEach { storeArray.put(it) }
+
+            val body = JSONObject()
+                .put("p_apply_to_all", applyToAll)
+                .put("p_store_ids", storeArray)
+                .put("p_items", itemArray)
+                .put("p_note", note)
+
+            postRpcValue(
+                "$baseUrl/rest/v1/rpc/admin_publish_price_update",
+                body,
+                token
+            )
+        }
+    }
 
     suspend fun getRegisteredStoreDevices(): Result<List<StoreDevice>> =
         withContext(Dispatchers.IO) {
@@ -188,9 +221,7 @@ class SupabaseAuth(context: Context) {
         }
 
         val rows = JSONArray(response)
-        if (rows.length() == 0) {
-            error("Admin profile was not found.")
-        }
+        if (rows.length() == 0) error("Admin profile was not found.")
 
         val row = rows.getJSONObject(0)
         return AdminProfile(
@@ -201,35 +232,23 @@ class SupabaseAuth(context: Context) {
         )
     }
 
-    private fun postJson(
-        url: String,
-        body: JSONObject,
-        bearer: String? = null
-    ): JSONObject {
-        val connection = open(url, "POST", bearer)
+    private fun postJson(url: String, body: JSONObject): JSONObject {
+        val connection = open(url, "POST", null)
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
         connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
         val response = readResponse(connection)
-        if (connection.responseCode !in 200..299) {
-            error(extractError(response, "Request failed."))
-        }
+        if (connection.responseCode !in 200..299) error(extractError(response, "Request failed."))
         return JSONObject(response)
     }
 
-    private fun postRpcValue(
-        url: String,
-        body: JSONObject,
-        bearer: String
-    ): String {
+    private fun postRpcValue(url: String, body: JSONObject, bearer: String): String {
         val connection = open(url, "POST", bearer)
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
         connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
         val response = readResponse(connection)
-        if (connection.responseCode !in 200..299) {
-            error(extractError(response, "Request failed."))
-        }
+        if (connection.responseCode !in 200..299) error(extractError(response, "Request failed."))
 
         val value = JSONTokener(response.trim()).nextValue()
         return when (value) {
@@ -244,19 +263,14 @@ class SupabaseAuth(context: Context) {
             connectTimeout = 10000
             readTimeout = 10000
             setRequestProperty("apikey", publishableKey)
-            if (!bearer.isNullOrBlank()) {
-                setRequestProperty("Authorization", "Bearer $bearer")
-            }
+            if (!bearer.isNullOrBlank()) setRequestProperty("Authorization", "Bearer $bearer")
             setRequestProperty("Accept", "application/json")
         }
     }
 
     private fun readResponse(connection: HttpURLConnection): String {
-        val stream = if (connection.responseCode in 200..299) {
-            connection.inputStream
-        } else {
-            connection.errorStream ?: connection.inputStream
-        }
+        val stream = if (connection.responseCode in 200..299) connection.inputStream
+        else connection.errorStream ?: connection.inputStream
         return stream.bufferedReader().use { it.readText() }
     }
 
@@ -283,8 +297,15 @@ class SupabaseAuth(context: Context) {
     )
 
     data class StoreOption(
+        val id: String,
         val code: String,
         val name: String
+    )
+
+    data class AdminPriceItem(
+        val pluNo: Int,
+        val pluName: String,
+        val newPrice: Double
     )
 
     data class StoreDevice(
