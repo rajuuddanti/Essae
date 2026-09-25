@@ -32,6 +32,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,12 +56,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.res.painterResource
 import com.mahamart.essae.data.AppDatabase
 import com.mahamart.essae.data.Plu
 import com.mahamart.essae.data.PluDao
@@ -447,6 +454,28 @@ fun EssaeApp(db: AppDatabase) {
         mutableStateOf(false)
     }
 
+    var deviceRegistered by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val prefs = context.getSharedPreferences(
+                    "store_device_registration",
+                    Context.MODE_PRIVATE
+                )
+                deviceRegistered = prefs.getBoolean("registered", false)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val q =
         searchQuery.trim()
 
@@ -571,10 +600,8 @@ fun EssaeApp(db: AppDatabase) {
 
                     actions = {
 
-                        TextButton(
-
+                        IconButton(
                             onClick = {
-
                                 context.startActivity(
                                     Intent(
                                         context,
@@ -582,24 +609,25 @@ fun EssaeApp(db: AppDatabase) {
                                     )
                                 )
                             }
-
                         ) {
-
-                            Text(
-                                "DEVICE REG",
-                                color =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .primary,
-                                fontWeight =
-                                    FontWeight.Bold
+                            Icon(
+                                painter = painterResource(
+                                    if (deviceRegistered) {
+                                        R.drawable.ic_device_registered
+                                    } else {
+                                        R.drawable.ic_device_unregistered
+                                    }
+                                ),
+                                contentDescription = if (deviceRegistered) {
+                                    "Registered store device"
+                                } else {
+                                    "Register this store device"
+                                }
                             )
                         }
 
                         TextButton(
-
                             onClick = {
-
                                 context.startActivity(
                                     Intent(
                                         context,
@@ -607,9 +635,7 @@ fun EssaeApp(db: AppDatabase) {
                                     )
                                 )
                             }
-
                         ) {
-
                             Text(
                                 "LABEL DESIGN",
                                 color =
