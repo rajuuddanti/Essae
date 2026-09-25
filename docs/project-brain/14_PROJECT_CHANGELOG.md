@@ -60,4 +60,10 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - Upload Label Design sends the currently selected slot to the Essae scale.
 - Existing Essae transport and price-edit/upload behavior were not changed.
 - Supplied LFT contents are preserved; only their local slot names are normalized for the app.
+## 2026-09-25 — Temporary Store → Admin Price Visibility Test
+
+- Admin Push store rows simplified to show only store code/name and running price; removed the "No confirmed scale price" / last-upload detail text.
+- For a controlled test only, `log_pending_price_changes` now also upserts `store_price_current` when a phone changes a local price.
+- This temporary behavior intentionally makes Admin Push see the changed phone price before Essae Upload All, so store → cloud → admin visibility can be verified.
+- This must be reverted after the test so `store_price_current` again represents the confirmed physical-scale price after successful Essae upload.
 
