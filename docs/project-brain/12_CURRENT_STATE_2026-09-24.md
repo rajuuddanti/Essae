@@ -1,25 +1,25 @@
-# Current State — 2026-09-24
+# Current State — 2026-09-25
 
-## Android
-The corrected Admin Auth build successfully reached the Admin Dashboard on the user's physical Android device.
+## Verified Android
+The current feature branch has verified Admin authentication, Store Device Registration, Store/Device Mapping, device persistence, last-seen updates, and the existing Essae upload path.
 
-Admin flow:
-Scale Manager long press -> Admin Login -> Supabase Auth -> profiles role/active check -> Admin Dashboard.
-
-The dashboard shell confirmed:
-- MahaMart Admin
-- ADMIN
-- authentication connected successfully
-- placeholders for Admin Push, Reports, and Store/IP Mapping
+## Verified device test
+- Store: MM017 — Vidya Nagar
+- Device: sdk_gphone16k_x86_64
+- Device ID: 7bf621a9c15a33ea
+- IP: 10.0.2.15
 
 ## Supabase
-Database rebuild and Admin Push migration are in place.
+The multi-device registration migration is applied. Device registration and device-level state objects are present.
 
-Tables include:
-admin_current_prices, admin_price_change_report, admin_price_push_report, admin_price_update_targets, admin_price_updates, admin_scale_upload_report, profiles, scale_upload_sessions, store_ip_map, store_price_change_log, store_price_current, stores.
+The registration RPC conflict bug was fixed by using the explicit unique constraint `store_devices_device_id_unique`.
 
-Relevant RPCs/functions include:
-admin_publish_price_update, admin_save_store_ip_mapping, complete_scale_upload, fail_scale_upload, is_admin, log_pending_price_changes, mark_reverted_price_changes, start_scale_upload, store_get_pending_admin_price_updates, store_mark_admin_price_updates_synced.
+## Timezone
+Keep database timestamps as `timestamptz`; Admin/report presentation should use Asia/Kolkata (IST, UTC+05:30).
 
-## Next implementation
-Build the real Admin Dashboard modules, starting with Admin Push, while keeping the stable Essae upload path unchanged.
+## Immediate next module
+**Admin Push**
+
+Admin Push must search/select a PLU, show its current Admin price, allow all/selected stores, accept a new price, confirm before publishing, call the Admin Push RPC, and record auditable results. It creates pending store/device work; it does not directly upload to Essae.
+
+After Admin Push: device-level Store Sync, persistent RED/PENDING state, physical-upload lifecycle, then Reports/export and multi-device testing.
