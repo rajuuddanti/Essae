@@ -1,5 +1,6 @@
 package com.mahamart.essae
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -186,6 +187,26 @@ private fun AdminDashboard(
 
         Text(
             "Generate a one-time registration code for a physical store device.",
+            style = MaterialTheme.typography.bodySmall
+        )
+
+        Button(
+            onClick = {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                context.startActivity(
+                    Intent(
+                        context,
+                        AdminStoreDeviceMappingActivity::class.java
+                    )
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("STORE / DEVICE MAPPING")
+        }
+
+        Text(
+            "View every registered Android device and its permanent store mapping.",
             style = MaterialTheme.typography.bodySmall
         )
 
