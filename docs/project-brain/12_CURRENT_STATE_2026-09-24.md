@@ -14,12 +14,28 @@ The multi-device registration migration is applied. Device registration and devi
 
 The registration RPC conflict bug was fixed by using the explicit unique constraint `store_devices_device_id_unique`.
 
+## Admin Push checkpoint
+A first functional Admin Push screen is now implemented on the feature branch:
+- Admin dashboard entry button.
+- PLU/SKU/item search using the local PLU master.
+- Single PLU selection.
+- New price input.
+- All active stores or selected stores.
+- Confirmation dialog.
+- Supabase `admin_publish_price_update` call.
+- Success/failure message with returned update ID.
+
+This is **implemented but not yet build/device-tested**. Do not merge to `main` yet.
+
+The Admin Push screen only creates cloud pending work. It does not directly upload to Essae.
+
 ## Timezone
-Keep database timestamps as `timestamptz`; Admin/report presentation should use Asia/Kolkata (IST, UTC+05:30).
+Keep database timestamps as absolute `timestamptz` values. Admin/report presentation should use Asia/Kolkata / IST.
 
 ## Immediate next module
-**Admin Push**
-
-Admin Push must search/select a PLU, show its current Admin price, allow all/selected stores, accept a new price, confirm before publishing, call the Admin Push RPC, and record auditable results. It creates pending store/device work; it does not directly upload to Essae.
-
-After Admin Push: device-level Store Sync, persistent RED/PENDING state, physical-upload lifecycle, then Reports/export and multi-device testing.
+1. Build/test Admin Push on the Android device.
+2. Verify the Supabase push row and selected/all store targets.
+3. Implement device-level Store Sync using the v2 RPCs.
+4. Make RED/PENDING state persistent.
+5. Connect physical Upload All success/failure to cloud lifecycle.
+6. Reports/export and multi-device end-to-end testing.
