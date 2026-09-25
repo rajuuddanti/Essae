@@ -18,26 +18,30 @@ Added store-code + device-ID registration, one-time registration codes, device l
 ## Registration bug fix
 Fixed the registration RPC conflict ambiguity by using the explicit `store_devices_device_id_unique` constraint.
 
-## Admin Push checkpoint — 2026-09-25
-Added the first functional Admin Push module on `feature/admin-device-registration`:
-- Dashboard entry.
-- PLU/SKU/item search from local PLU data.
-- New price entry.
-- All-store or selected-store targeting.
-- Confirmation dialog.
-- `admin_publish_price_update` Supabase call.
-- Returned update ID / error display.
+## Admin Push — per-store price view — 2026-09-25
+Redesigned Admin Push to follow the main Scale Manager workflow:
+- First screen is the PLU master list.
+- Tap a SKU/PLU to open its Admin detail.
+- Detail shows every active store with store code/name and the latest known confirmed running price.
+- Store selection is on the left.
+- Each selected store can have its own new price.
+- Different new prices are grouped into separate Admin Push updates.
+- The screen does not directly upload to physical Essae scales.
 
-Status: **implemented, not yet build/device-tested**.
+Added `admin_get_store_plu_prices(plu_no)` to read the latest confirmed price per store, using registered-device data first and legacy store/IP mapping as fallback.
+
+Status: **code pushed; Supabase migration and Android build/device test still required**.
 
 ## Next milestones
-1. Build/device-test Admin Push.
-2. Verify Supabase update header and targets.
-3. Device-level Store Sync.
-4. Persistent RED/PENDING state.
-5. Physical upload cloud lifecycle.
-6. Reports/export.
-7. Multi-device end-to-end testing.
+1. Apply `MahaMart_ADMIN_PUSH_STORE_PRICE_VIEW.sql` in Supabase.
+2. Build/device-test the redesigned Admin Push.
+3. Verify current price values for all stores.
+4. Verify selected-store and different-price pushes.
+5. Device-level Store Sync.
+6. Persistent RED/PENDING state.
+7. Physical upload cloud lifecycle.
+8. Reports/export.
+9. Multi-device end-to-end testing.
 
 ## Guardrails
 - Do not rewrite `EssaeTransport.kt`.
