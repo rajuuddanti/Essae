@@ -19,6 +19,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".AdminPushActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".StoreDeviceRegistrationActivity"
             android:exported="false" />
 
