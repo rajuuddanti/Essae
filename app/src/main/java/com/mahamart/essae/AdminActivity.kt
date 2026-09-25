@@ -34,10 +34,7 @@ class AdminActivity : ComponentActivity() {
 
         setContent {
             MahaMartTheme {
-                AdminScreen(
-                    auth = auth,
-                    onClose = { finish() }
-                )
+                AdminScreen(auth = auth, onClose = { finish() })
             }
         }
     }
@@ -56,9 +53,7 @@ private fun AdminScreen(
 
     LaunchedEffect(Unit) {
         if (auth.isSignedIn) {
-            auth.restoreSession().onSuccess {
-                profile = it
-            }
+            auth.restoreSession().onSuccess { profile = it }
         }
     }
 
@@ -77,9 +72,7 @@ private fun AdminScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
         Text("MahaMart Admin", style = MaterialTheme.typography.headlineMedium)
@@ -128,6 +121,7 @@ private fun AdminScreen(
             if (loading) CircularProgressIndicator(strokeWidth = 2.dp)
             else Text("SIGN IN")
         }
+
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onClose, enabled = !loading) {
             Text("CANCEL")
@@ -136,14 +130,15 @@ private fun AdminScreen(
 
     if (loading) {
         LaunchedEffect(email, password, loading) {
-            val result = auth.signIn(email, password)
-            result.onSuccess {
-                profile = it
-                loading = false
-            }.onFailure {
-                error = it.message ?: "Login failed."
-                loading = false
-            }
+            auth.signIn(email, password)
+                .onSuccess {
+                    profile = it
+                    loading = false
+                }
+                .onFailure {
+                    error = it.message ?: "Login failed."
+                    loading = false
+                }
         }
     }
 }
@@ -167,9 +162,7 @@ private fun AdminDashboard(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text("Admin Dashboard", style = MaterialTheme.typography.headlineMedium)
@@ -180,12 +173,24 @@ private fun AdminDashboard(
         Text("Admin authentication is connected successfully.")
 
         Button(
+            onClick = {
+                context.startActivity(Intent(context, AdminPushActivity::class.java))
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("ADMIN PUSH")
+        }
+        Text(
+            "Publish a price to all stores or selected stores.",
+            style = MaterialTheme.typography.bodySmall
+        )
+
+        Button(
             onClick = { showDeviceRegistration = true },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("STORE DEVICE REGISTRATION")
         }
-
         Text(
             "Generate a one-time registration code for a physical store device.",
             style = MaterialTheme.typography.bodySmall
@@ -194,17 +199,13 @@ private fun AdminDashboard(
         Button(
             onClick = {
                 context.startActivity(
-                    Intent(
-                        context,
-                        AdminStoreDeviceMappingActivity::class.java
-                    )
+                    Intent(context, AdminStoreDeviceMappingActivity::class.java)
                 )
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("STORE / DEVICE MAPPING")
         }
-
         Text(
             "View every registered Android device and its permanent store mapping.",
             style = MaterialTheme.typography.bodySmall
