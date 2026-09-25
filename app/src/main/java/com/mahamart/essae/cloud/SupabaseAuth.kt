@@ -4,7 +4,9 @@ import android.content.Context
 import com.mahamart.essae.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -90,6 +92,51 @@ class SupabaseAuth(context: Context) {
             }
         }
 
+    suspend fun getActiveStores(): Result<List<StoreOption>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = accessToken ?: error("Admin session expired. Sign in again.")
+                val url =
+                    "$baseUrl/rest/v1/stores?select=store_code,store_name&active=eq.true&order=store_code"
+                val connection = open(url, "GET", token)
+                val response = readResponse(connection)
+                if (connection.responseCode !in 200..299) {
+                    error(extractError(response, "Could not load stores."))
+                }
+
+                val rows = JSONArray(response)
+                buildList {
+                    for (i in 0 until rows.length()) {
+                        val row = rows.getJSONObject(i)
+                        add(
+                            StoreOption(
+                                code = row.optString("store_code"),
+                                name = row.optString("store_name")
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+    suspend fun generateStoreDeviceCode(
+        storeCode: String,
+        expiresMinutes: Int = 60
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val token = accessToken ?: error("Admin session expired. Sign in again.")
+            val body = JSONObject()
+                .put("p_store_code", storeCode.trim())
+                .put("p_expires_minutes", expiresMinutes)
+
+            postRpcValue(
+                "$baseUrl/rest/v1/rpc/admin_generate_store_device_code",
+                body,
+                token
+            )
+        }
+    }
+
     fun signOut() {
         clearSession()
     }
@@ -102,7 +149,7 @@ class SupabaseAuth(context: Context) {
             error(extractError(response, "Could not verify admin profile."))
         }
 
-        val rows = org.json.JSONArray(response)
+        val rows = JSONArray(response)
         if (rows.length() == 0) {
             error("Admin profile was not found.")
         }
@@ -116,16 +163,41 @@ class SupabaseAuth(context: Context) {
         )
     }
 
-    private fun postJson(url: String, body: JSONObject): JSONObject {
-        val connection = open(url, "POST", null)
+    private fun postJson(
+        url: String,
+        body: JSONObject,
+        bearer: String? = null
+    ): JSONObject {
+        val connection = open(url, "POST", bearer)
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
         connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
         val response = readResponse(connection)
         if (connection.responseCode !in 200..299) {
-            error(extractError(response, "Login failed."))
+            error(extractError(response, "Request failed."))
         }
         return JSONObject(response)
+    }
+
+    private fun postRpcValue(
+        url: String,
+        body: JSONObject,
+        bearer: String
+    ): String {
+        val connection = open(url, "POST", bearer)
+        connection.doOutput = true
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+        val response = readResponse(connection)
+        if (connection.responseCode !in 200..299) {
+            error(extractError(response, "Request failed."))
+        }
+
+        val value = JSONTokener(response.trim()).nextValue()
+        return when (value) {
+            is String -> value
+            else -> value.toString()
+        }
     }
 
     private fun open(url: String, method: String, bearer: String?): HttpURLConnection {
@@ -170,6 +242,11 @@ class SupabaseAuth(context: Context) {
         val fullName: String,
         val role: String,
         val active: Boolean
+    )
+
+    data class StoreOption(
+        val code: String,
+        val name: String
     )
 
     private companion object {
