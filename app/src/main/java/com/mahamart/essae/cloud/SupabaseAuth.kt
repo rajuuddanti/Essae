@@ -119,6 +119,44 @@ class SupabaseAuth(context: Context) {
             }
         }
 
+    suspend fun getRegisteredStoreDevices(): Result<List<StoreDevice>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = accessToken ?: error("Admin session expired. Sign in again.")
+                val url =
+                    "$baseUrl/rest/v1/admin_store_devices" +
+                        "?select=id,store_code,store_name,device_id,device_name,device_ip,active,registered_at,last_seen_at,updated_at" +
+                        "&order=store_code.asc,device_name.asc"
+
+                val connection = open(url, "GET", token)
+                val response = readResponse(connection)
+                if (connection.responseCode !in 200..299) {
+                    error(extractError(response, "Could not load registered devices."))
+                }
+
+                val rows = JSONArray(response)
+                buildList {
+                    for (i in 0 until rows.length()) {
+                        val row = rows.getJSONObject(i)
+                        add(
+                            StoreDevice(
+                                id = row.optString("id"),
+                                storeCode = row.optString("store_code"),
+                                storeName = row.optString("store_name"),
+                                deviceId = row.optString("device_id"),
+                                deviceName = row.optString("device_name"),
+                                deviceIp = row.optString("device_ip"),
+                                active = row.optBoolean("active", false),
+                                registeredAt = row.optString("registered_at"),
+                                lastSeenAt = row.optString("last_seen_at").ifBlank { null },
+                                updatedAt = row.optString("updated_at")
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
     suspend fun generateStoreDeviceCode(
         storeCode: String,
         expiresMinutes: Int = 60
@@ -247,6 +285,19 @@ class SupabaseAuth(context: Context) {
     data class StoreOption(
         val code: String,
         val name: String
+    )
+
+    data class StoreDevice(
+        val id: String,
+        val storeCode: String,
+        val storeName: String,
+        val deviceId: String,
+        val deviceName: String,
+        val deviceIp: String,
+        val active: Boolean,
+        val registeredAt: String,
+        val lastSeenAt: String?,
+        val updatedAt: String
     )
 
     private companion object {
