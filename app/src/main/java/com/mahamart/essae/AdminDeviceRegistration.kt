@@ -83,7 +83,7 @@ fun AdminDeviceRegistration(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        selectedStore?.let { "\${it.code} — \${it.name}" }
+                        selectedStore?.let { "${it.code} — ${it.name}" }
                             ?: "Tap to select a store"
                     )
                     Spacer(Modifier.height(4.dp))
@@ -211,7 +211,7 @@ private fun StorePickerDialog(
                                 .padding(12.dp)
                         ) {
                             Text(
-                                "\${store.code}  \${store.name}"
+                                "${store.code}  ${store.name}"
                             )
                         }
                     }
