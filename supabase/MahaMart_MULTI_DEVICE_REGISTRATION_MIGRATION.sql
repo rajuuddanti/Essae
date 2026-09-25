@@ -117,13 +117,8 @@ begin
         raise exception 'Active store not found';
     end if;
 
-    -- Keep old unused codes harmless by expiring them.
-    update public.store_device_registration_codes
-    set expires_at = least(expires_at, now())
-    where store_id = v_store_id
-      and used_at is null
-      and expires_at > now();
-
+    -- Do not invalidate other active codes for this store.
+    -- Each physical device gets its own one-time code.
     v_code := replace(gen_random_uuid()::text, '-', '');
 
     insert into public.store_device_registration_codes (
