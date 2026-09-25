@@ -47,3 +47,17 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - Do not rewrite `EssaeTransport.kt`.
 - Do not commit secrets.
 - Do not merge experimental Admin Push work into `main` until end-to-end tests pass.
+## 2026-09-25 — Bundled PLU Master + Two Label Designs
+
+- Added the supplied 133-PLU CSV as the bundled fresh-install PLU master.
+- Bundled PLU master intentionally contains zero prices; it seeds the local Room PLU list only.
+- Fresh install seeds the PLU database once; later CSV imports continue using the existing import/update path.
+- Added two persistent bundled label-design slots:
+  - **Weight Only**
+  - **Weight + ₹ Price**
+- Label Design screen now has exactly two tabs with those names.
+- Import / Replace Design replaces the currently selected slot locally.
+- Upload Label Design sends the currently selected slot to the Essae scale.
+- Existing Essae transport and price-edit/upload behavior were not changed.
+- Supplied LFT contents are preserved; only their local slot names are normalized for the app.
+
