@@ -15,13 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,55 +76,71 @@ private fun AdminPushScreen(
 
     var search by rememberSaveable { mutableStateOf("") }
     var selectedPlu by remember { mutableStateOf<Plu?>(null) }
-    var newPrice by rememberSaveable { mutableStateOf("") }
-    var note by rememberSaveable { mutableStateOf("") }
-
-    var stores by remember { mutableStateOf<List<SupabaseAuth.StoreOption>>(emptyList()) }
+    var storePrices by remember { mutableStateOf<List<SupabaseAuth.StorePluPrice>>(emptyList()) }
     var selectedStoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var applyToAll by rememberSaveable { mutableStateOf(true) }
+    var newPrices by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
-    var loadingStores by rememberSaveable { mutableStateOf(true) }
+    var loadingStores by rememberSaveable { mutableStateOf(false) }
+    var loadingPrices by rememberSaveable { mutableStateOf(false) }
     var publishing by rememberSaveable { mutableStateOf(false) }
     var message by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf("") }
     var confirm by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        auth.getActiveStores()
-            .onSuccess {
-                stores = it
-                selectedStoreIds = it.map { store -> store.id }.toSet()
-                loadingStores = false
-            }
-            .onFailure {
-                error = it.message ?: "Could not load stores."
-                loadingStores = false
-            }
-    }
-
     val filteredPlus = remember(allPlus, search) {
         val q = search.trim()
         if (q.isBlank()) {
-            allPlus.take(80)
+            allPlus
         } else {
             allPlus.filter {
                 it.number.toString().contains(q, ignoreCase = true) ||
                     it.name.contains(q, ignoreCase = true) ||
                     it.code.contains(q, ignoreCase = true)
-            }.take(80)
+            }
         }
+    }
+
+    fun selectPlu(plu: Plu) {
+        selectedPlu = plu
+        selectedStoreIds = emptySet()
+        newPrices = emptyMap()
+        message = ""
+        error = ""
+        loadingPrices = true
+
+        scope.launch {
+            auth.getStorePluPrices(plu.number)
+                .onSuccess {
+                    storePrices = it
+                    loadingPrices = false
+                }
+                .onFailure {
+                    storePrices = emptyList()
+                    error = it.message ?: "Could not load store prices."
+                    loadingPrices = false
+                }
+        }
+    }
+
+    fun goBackToMaster() {
+        selectedPlu = null
+        storePrices = emptyList()
+        selectedStoreIds = emptySet()
+        newPrices = emptyMap()
+        message = ""
+        error = ""
     }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "ADMIN PUSH",
+                if (selectedPlu == null) "ADMIN PUSH" else "ADMIN PUSH",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
@@ -133,164 +148,234 @@ private fun AdminPushScreen(
             TextButton(onClick = onClose) { Text("CLOSE") }
         }
 
-        Text(
-            "Publish a price change to all stores or selected stores.",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        OutlinedTextField(
-            value = search,
-            onValueChange = { search = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Search PLU / SKU / item") },
-            singleLine = true
-        )
-
         if (selectedPlu == null) {
-            Text("Select an item", style = MaterialTheme.typography.labelLarge)
+            Text(
+                "Tap a SKU to see the running price in every store.",
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Search SKU / Name / Barcode") },
+                singleLine = true
+            )
+
+            Text(
+                "PLU MASTER",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().height(170.dp)
+                modifier = Modifier.fillMaxWidth().weight(1f)
             ) {
                 items(filteredPlus, key = { it.number }) { plu ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                selectedPlu = plu
-                                newPrice = ""
-                                message = ""
-                                error = ""
-                            }
-                            .padding(vertical = 8.dp),
+                            .clickable { selectPlu(plu) }
+                            .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(plu.name.ifBlank { "Unnamed PLU" })
                             Text(
-                                "PLU " + plu.number + " • " + plu.code,
+                                plu.number.toString() + "  " +
+                                    plu.name.ifBlank { "Unnamed PLU" },
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                plu.code + " • " +
+                                    if (plu.uom == 0) "WEIGH" else "PCS",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                "Tap to view store prices",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
-                        Text("₹" + String.format("%.2f", plu.unitPrice))
+                        Text(
+                            "₹" + String.format("%.2f", plu.unitPrice),
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
         } else {
             val plu = selectedPlu!!
-            Text("Selected item", style = MaterialTheme.typography.labelLarge)
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(plu.name, fontWeight = FontWeight.SemiBold)
-                    Text("PLU " + plu.number + " • " + plu.code)
-                    Text(
-                        "Current phone price: ₹" + String.format("%.2f", plu.unitPrice),
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                TextButton(onClick = { goBackToMaster() }) {
+                    Text("← PLU LIST")
                 }
-                TextButton(onClick = { selectedPlu = null }) { Text("CHANGE") }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    plu.name,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
             }
-        }
 
-        OutlinedTextField(
-            value = newPrice,
-            onValueChange = {
-                if (it.matches(Regex("^\\d{0,8}(\\.\\d{0,2})?$"))) newPrice = it
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("New price") },
-            prefix = { Text("₹") },
-            singleLine = true
-        )
+            Text(
+                "PLU " + plu.number + " • " + plu.code,
+                style = MaterialTheme.typography.bodySmall
+            )
 
-        Text("Stores", style = MaterialTheme.typography.labelLarge)
+            Text(
+                "Master price: ₹" + String.format("%.2f", plu.unitPrice),
+                style = MaterialTheme.typography.bodySmall
+            )
 
-        if (loadingStores) {
-            CircularProgressIndicator(strokeWidth = 2.dp)
-        } else {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = applyToAll,
-                        role = Role.Checkbox,
-                        onValueChange = {
-                            applyToAll = it
-                            if (it) selectedStoreIds = stores.map { store -> store.id }.toSet()
-                        }
-                    ),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(checked = applyToAll, onCheckedChange = null)
-                Spacer(Modifier.width(4.dp))
-                Text("ALL STORES (" + stores.size + ")")
+                Text(
+                    "STORE",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "RUNNING",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(78.dp)
+                )
+                Text(
+                    "NEW",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(86.dp)
+                )
             }
 
-            if (!applyToAll) {
-                LazyColumn(modifier = Modifier.fillMaxWidth().height(140.dp)) {
-                    items(stores, key = { it.id }) { store ->
-                        val checked = selectedStoreIds.contains(store.id)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        selectedStoreIds = storePrices.map { it.storeId }.toSet()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("SELECT ALL")
+                }
+                OutlinedButton(
+                    onClick = {
+                        selectedStoreIds = emptySet()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("CLEAR")
+                }
+            }
+
+            if (loadingPrices) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(strokeWidth = 2.dp)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                ) {
+                    items(storePrices, key = { it.storeId }) { store ->
+                        val checked = selectedStoreIds.contains(store.storeId)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .toggleable(
-                                    value = checked,
-                                    role = Role.Checkbox,
-                                    onValueChange = {
-                                        selectedStoreIds =
-                                            if (it) selectedStoreIds + store.id
-                                            else selectedStoreIds - store.id
-                                    }
-                                ),
+                                .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Checkbox(checked = checked, onCheckedChange = null)
-                            Spacer(Modifier.width(4.dp))
-                            Text(store.code + " — " + store.name)
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = {
+                                    selectedStoreIds =
+                                        if (it) selectedStoreIds + store.storeId
+                                        else selectedStoreIds - store.storeId
+                                }
+                            )
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    store.storeCode + " — " + store.storeName,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    if (store.currentPrice == null)
+                                        "No confirmed scale price"
+                                    else
+                                        "Last uploaded: " +
+                                            (store.lastUploadedAt ?: "unknown"),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            Text(
+                                if (store.currentPrice == null)
+                                    "—"
+                                else
+                                    "₹" + String.format("%.2f", store.currentPrice),
+                                modifier = Modifier.width(78.dp),
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            OutlinedTextField(
+                                value = newPrices[store.storeId] ?: "",
+                                onValueChange = { value ->
+                                    if (value.matches(Regex("^\\d{0,8}(\\.\\d{0,2})?$"))) {
+                                        newPrices = newPrices + (store.storeId to value)
+                                    }
+                                },
+                                modifier = Modifier.width(86.dp),
+                                label = { Text("₹") },
+                                singleLine = true,
+                                enabled = checked
+                            )
                         }
                     }
                 }
             }
-        }
 
-        OutlinedTextField(
-            value = note,
-            onValueChange = { note = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Note (optional)") },
-            singleLine = true
-        )
+            val readyCount = selectedStoreIds.count {
+                !newPrices[it].isNullOrBlank() && newPrices[it]?.toDoubleOrNull() != null
+            }
 
-        if (error.isNotBlank()) {
-            Text(error, color = MaterialTheme.colorScheme.error)
-        }
-        if (message.isNotBlank()) {
-            Text(message, color = MaterialTheme.colorScheme.primary)
-        }
+            if (error.isNotBlank()) {
+                Text(error, color = MaterialTheme.colorScheme.error)
+            }
+            if (message.isNotBlank()) {
+                Text(message, color = MaterialTheme.colorScheme.primary)
+            }
 
-        Spacer(Modifier.height(2.dp))
+            Button(
+                onClick = { confirm = true },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !publishing &&
+                    selectedStoreIds.isNotEmpty() &&
+                    readyCount == selectedStoreIds.size
+            ) {
+                Text("PUSH TO " + selectedStoreIds.size + " STORE(S)")
+            }
 
-        Button(
-            onClick = { confirm = true },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !publishing &&
-                selectedPlu != null &&
-                newPrice.toDoubleOrNull() != null &&
-                (applyToAll || selectedStoreIds.isNotEmpty())
-        ) {
-            Text("PUBLISH PRICE")
-        }
-
-        if (publishing) {
-            CircularProgressIndicator(strokeWidth = 2.dp)
+            if (publishing) {
+                CircularProgressIndicator(strokeWidth = 2.dp)
+            }
         }
     }
 
     if (confirm && selectedPlu != null) {
-        val targetText = if (applyToAll) "ALL ACTIVE STORES"
-        else selectedStoreIds.size.toString() + " SELECTED STORE(S)"
+        val grouped = selectedStoreIds
+            .mapNotNull { id ->
+                val price = newPrices[id]?.toDoubleOrNull() ?: return@mapNotNull null
+                id to price
+            }
+            .groupBy({ it.second }, { it.first })
 
         AlertDialog(
             onDismissRequest = { if (!publishing) confirm = false },
@@ -298,10 +383,10 @@ private fun AdminPushScreen(
             text = {
                 Text(
                     selectedPlu!!.name + "\n" +
-                        "PLU " + selectedPlu!!.number + "\n" +
-                        "₹" + String.format("%.2f", selectedPlu!!.unitPrice) +
-                        " → ₹" + String.format("%.2f", newPrice.toDouble()) + "\n" +
-                        "Target: " + targetText
+                        grouped.size + " price group(s) • " +
+                        selectedStoreIds.size + " store(s)\n\n" +
+                        "Only selected stores will receive these pending updates. " +
+                        "The physical scales are not changed by this action."
                 )
             },
             confirmButton = {
@@ -312,23 +397,45 @@ private fun AdminPushScreen(
                         error = ""
                         message = ""
 
-                        val item = SupabaseAuth.AdminPriceItem(
-                            pluNo = selectedPlu!!.number,
-                            pluName = selectedPlu!!.name,
-                            newPrice = newPrice.toDouble()
-                        )
-
                         scope.launch {
-                            auth.publishAdminPriceUpdate(
-                                applyToAll = applyToAll,
-                                storeIds = selectedStoreIds.toList(),
-                                items = listOf(item),
-                                note = note
-                            ).onSuccess { updateId ->
-                                message = "Published successfully. Update ID: " + updateId
-                            }.onFailure {
-                                error = it.message ?: "Admin Push failed."
+                            var firstError: String? = null
+                            var successCount = 0
+
+                            for ((price, storeIds) in grouped) {
+                                val result = auth.publishAdminPriceUpdate(
+                                    applyToAll = false,
+                                    storeIds = storeIds,
+                                    items = listOf(
+                                        SupabaseAuth.AdminPriceItem(
+                                            pluNo = selectedPlu!!.number,
+                                            pluName = selectedPlu!!.name,
+                                            newPrice = price
+                                        )
+                                    ),
+                                    note = "Admin Push from store-price view"
+                                )
+
+                                result.onSuccess {
+                                    successCount++
+                                }.onFailure {
+                                    if (firstError == null) {
+                                        firstError = it.message ?: "Admin Push failed."
+                                    }
+                                }
                             }
+
+                            if (firstError != null) {
+                                error = firstError!!
+                                message = if (successCount > 0)
+                                    "$successCount price group(s) published before the error."
+                                else
+                                    ""
+                            } else {
+                                message =
+                                    "Published $successCount price group(s) for " +
+                                        selectedStoreIds.size + " store(s)."
+                            }
+
                             publishing = false
                         }
                     },
