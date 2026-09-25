@@ -114,6 +114,38 @@ class SupabaseAuth(context: Context) {
             }
         }
 
+    suspend fun getStorePluPrices(pluNo: Int): Result<List<StorePluPrice>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = accessToken ?: error("Admin session expired. Sign in again.")
+                val body = JSONObject().put("p_plu_no", pluNo)
+                val response = postRpcValue(
+                    "$baseUrl/rest/v1/rpc/admin_get_store_plu_prices",
+                    body,
+                    token
+                )
+
+                val rows = JSONArray(response)
+                buildList {
+                    for (i in 0 until rows.length()) {
+                        val row = rows.getJSONObject(i)
+                        add(
+                            StorePluPrice(
+                                storeId = row.optString("store_id"),
+                                storeCode = row.optString("store_code"),
+                                storeName = row.optString("store_name"),
+                                currentPrice = if (row.isNull("current_price")) null
+                                else row.optDouble("current_price"),
+                                lastUploadedAt = row.optString("last_uploaded_at")
+                                    .ifBlank { null },
+                                deviceIp = row.optString("device_ip").ifBlank { null }
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
     suspend fun publishAdminPriceUpdate(
         applyToAll: Boolean,
         storeIds: List<String>,
@@ -263,7 +295,9 @@ class SupabaseAuth(context: Context) {
             connectTimeout = 10000
             readTimeout = 10000
             setRequestProperty("apikey", publishableKey)
-            if (!bearer.isNullOrBlank()) setRequestProperty("Authorization", "Bearer $bearer")
+            if (!bearer.isNullOrBlank()) {
+                setRequestProperty("Authorization", "Bearer $bearer")
+            }
             setRequestProperty("Accept", "application/json")
         }
     }
@@ -300,6 +334,15 @@ class SupabaseAuth(context: Context) {
         val id: String,
         val code: String,
         val name: String
+    )
+
+    data class StorePluPrice(
+        val storeId: String,
+        val storeCode: String,
+        val storeName: String,
+        val currentPrice: Double?,
+        val lastUploadedAt: String?,
+        val deviceIp: String?
     )
 
     data class AdminPriceItem(
