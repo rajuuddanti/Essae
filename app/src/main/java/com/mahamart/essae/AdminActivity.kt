@@ -22,9 +22,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
 import com.mahamart.essae.cloud.SupabaseAuth
-import kotlinx.coroutines.launch
 
 class AdminActivity : ComponentActivity() {
     private lateinit var auth: SupabaseAuth
@@ -66,6 +64,7 @@ private fun AdminScreen(
     if (profile != null) {
         AdminDashboard(
             profile = profile!!,
+            auth = auth,
             onLogout = {
                 auth.signOut()
                 profile = null
@@ -121,8 +120,6 @@ private fun AdminScreen(
                 }
                 loading = true
                 error = ""
-                // The composable cannot own the Activity lifecycle, so the login
-                // is performed from a remembered coroutine scope below.
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = !loading
@@ -136,7 +133,6 @@ private fun AdminScreen(
         }
     }
 
-    // Login side effect is separated so the UI remains simple and testable.
     if (loading) {
         LaunchedEffect(email, password, loading) {
             val result = auth.signIn(email, password)
@@ -154,9 +150,20 @@ private fun AdminScreen(
 @Composable
 private fun AdminDashboard(
     profile: SupabaseAuth.AdminProfile,
+    auth: SupabaseAuth,
     onLogout: () -> Unit,
     onClose: () -> Unit
 ) {
+    var showDeviceRegistration by rememberSaveable { mutableStateOf(false) }
+
+    if (showDeviceRegistration) {
+        AdminDeviceRegistration(
+            auth = auth,
+            onBack = { showDeviceRegistration = false }
+        )
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -169,7 +176,18 @@ private fun AdminDashboard(
 
         Spacer(Modifier.height(8.dp))
         Text("Admin authentication is connected successfully.")
-        Text("Next modules: Admin Push, Reports, and Store/IP Mapping.")
+
+        Button(
+            onClick = { showDeviceRegistration = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("STORE DEVICE REGISTRATION")
+        }
+
+        Text(
+            "Generate a one-time registration code for a physical store device.",
+            style = MaterialTheme.typography.bodySmall
+        )
 
         Spacer(Modifier.weight(1f))
         OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
