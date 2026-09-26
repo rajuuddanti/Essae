@@ -1,16 +1,14 @@
 -- ============================================================
 -- MahaMart Scale Manager - ADMIN PUSH STORE PRICE VIEW
 -- ============================================================
--- Shows the latest known confirmed scale price for one PLU
--- in every active store.
+-- current_price / last_uploaded_at = last confirmed physical scale upload
+-- pending_pushed_at = latest Admin Push received by a store/device
+-- but not yet physically uploaded.
 --
--- Source priority:
---   1. Active registered store devices
---   2. Legacy store_ip_map
---
--- This is READ ONLY for Admin Push. It does not change prices.
--- The returned current_price is the last uploaded/confirmed
--- physical-scale price available for that store.
+-- Android displays:
+--   LC: 21-09-2026, 12:36
+--   LC: 21-09-2026, 12:36 (26-09)*
+--   LC: 26-09-2026, 14:10
 -- ============================================================
 
 create or replace function public.admin_get_store_plu_prices(
@@ -22,7 +20,8 @@ returns table (
     store_name text,
     current_price numeric,
     last_uploaded_at timestamptz,
-    device_ip text
+    device_ip text,
+    pending_pushed_at timestamptz
 )
 language plpgsql
 security definer
@@ -34,8 +33,8 @@ begin
     end if;
 
     return query
-    with candidates as (
-        -- Current multi-device registration path.
+    with current_candidates as (
+        -- Registered-device path.
         select
             s.id as store_id,
             s.store_code,
@@ -55,7 +54,7 @@ begin
 
         union all
 
-        -- Legacy store/IP mapping compatibility.
+        -- Legacy IP mapping path.
         select
             s.id as store_id,
             s.store_code,
@@ -73,33 +72,86 @@ begin
            and c.plu_no = p_plu_no
         where s.active = true
     ),
-    ranked as (
+    ranked_current as (
         select
-            candidates.*,
+            current_candidates.*,
             row_number() over (
-                partition by candidates.store_id
+                partition by current_candidates.store_id
                 order by
-                    (candidates.current_price is null),
-                    candidates.last_uploaded_at desc nulls last,
-                    candidates.source_priority asc
+                    (current_candidates.current_price is null),
+                    current_candidates.last_uploaded_at desc nulls last,
+                    current_candidates.source_priority asc
             ) as rn
-        from candidates
+        from current_candidates
+    ),
+    pending_by_store as (
+        select
+            ds.store_id,
+            max(ds.synced_at) as pending_pushed_at
+        from public.admin_price_update_device_state ds
+        join public.admin_price_updates u
+            on u.id = ds.update_id
+        where ds.status = 'SYNCED'
+          and exists (
+              select 1
+              from jsonb_array_elements(
+                  case
+                      when jsonb_typeof(u.items) = 'array'
+                      then u.items
+                      else '[]'::jsonb
+                  end
+              ) item
+              where (item->>'plu_no')::integer = p_plu_no
+          )
+        group by ds.store_id
+    ),
+    legacy_pending as (
+        select
+            t.store_id,
+            max(t.synced_at) as pending_pushed_at
+        from public.admin_price_update_targets t
+        join public.admin_price_updates u
+            on u.id = t.update_id
+        where t.status = 'SYNCED'
+          and not exists (
+              select 1
+              from public.admin_price_update_device_state ds
+              where ds.update_id = t.update_id
+                and ds.store_id = t.store_id
+          )
+          and exists (
+              select 1
+              from jsonb_array_elements(
+                  case
+                      when jsonb_typeof(u.items) = 'array'
+                      then u.items
+                      else '[]'::jsonb
+                  end
+              ) item
+              where (item->>'plu_no')::integer = p_plu_no
+          )
+        group by t.store_id
     )
     select
-        ranked.store_id,
-        ranked.store_code,
-        ranked.store_name,
-        ranked.current_price,
-        ranked.last_uploaded_at,
-        ranked.device_ip
-    from ranked
-    where ranked.rn = 1
-    order by ranked.store_code;
+        rc.store_id,
+        rc.store_code,
+        rc.store_name,
+        rc.current_price,
+        rc.last_uploaded_at,
+        rc.device_ip,
+        coalesce(pb.pending_pushed_at, lp.pending_pushed_at)
+            as pending_pushed_at
+    from ranked_current rc
+    left join pending_by_store pb
+        on pb.store_id = rc.store_id
+    left join legacy_pending lp
+        on lp.store_id = rc.store_id
+    where rc.rn = 1
+    order by rc.store_code;
 end;
 $$;
 
 revoke all on function public.admin_get_store_plu_prices(integer) from public;
-
 grant execute on function public.admin_get_store_plu_prices(integer)
     to authenticated;
 
