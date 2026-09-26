@@ -37,7 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import com.mahamart.essae.cloud.SupabaseAuth
 import com.mahamart.essae.data.AppDatabase
 import com.mahamart.essae.data.Plu
@@ -301,10 +305,19 @@ private fun AdminPushScreen(
                                 }
                             )
 
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Text(
-                                    store.storeCode + " — " + store.storeName,
-                                    fontWeight = FontWeight.SemiBold
+                                    store.storeName,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Text(
+                                    "LC: " + formatIstLastChanged(store.lastUploadedAt),
+                                    style = MaterialTheme.typography.bodySmall
                                 )
                             }
 
@@ -313,7 +326,7 @@ private fun AdminPushScreen(
                                     "—"
                                 else
                                     "₹" + String.format("%.2f", store.currentPrice),
-                                modifier = Modifier.width(78.dp),
+                                modifier = Modifier.width(70.dp),
                                 fontWeight = FontWeight.Bold
                             )
 
@@ -324,7 +337,7 @@ private fun AdminPushScreen(
                                         newPrices = newPrices + (store.storeId to value)
                                     }
                                 },
-                                modifier = Modifier.width(86.dp),
+                                modifier = Modifier.width(82.dp),
                                 label = { Text("₹") },
                                 singleLine = true,
                                 enabled = checked
@@ -446,4 +459,20 @@ private fun AdminPushScreen(
             }
         )
     }
+private fun formatIstLastChanged(value: String?): String {
+    if (value.isNullOrBlank()) return "—"
+
+    return runCatching {
+        Instant.parse(value)
+            .atZone(ZoneId.of("Asia/Kolkata"))
+            .format(
+                DateTimeFormatter.ofPattern(
+                    "dd-MM-yyyy, HH:mm"
+                )
+            )
+    }.getOrElse {
+        "—"
+    }
+}
+
 }
