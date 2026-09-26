@@ -83,7 +83,7 @@ private fun AdminPushScreen(
     var selectedPlu by remember { mutableStateOf<Plu?>(null) }
     var storePrices by remember { mutableStateOf<List<SupabaseAuth.StorePluPrice>>(emptyList()) }
     var selectedStoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var newPrices by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var newPrice by rememberSaveable { mutableStateOf("") }
 
     var loadingStores by rememberSaveable { mutableStateOf(false) }
     var loadingPrices by rememberSaveable { mutableStateOf(false) }
@@ -108,7 +108,7 @@ private fun AdminPushScreen(
     fun selectPlu(plu: Plu) {
         selectedPlu = plu
         selectedStoreIds = emptySet()
-        newPrices = emptyMap()
+        newPrice = ""
         message = ""
         error = ""
         loadingPrices = true
@@ -131,7 +131,7 @@ private fun AdminPushScreen(
         selectedPlu = null
         storePrices = emptyList()
         selectedStoreIds = emptySet()
-        newPrices = emptyMap()
+        newPrice = ""
         message = ""
         error = ""
     }
@@ -240,19 +240,25 @@ private fun AdminPushScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "STORE",
+                    "NEW PRICE",
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                Text(
-                    "RUNNING",
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(78.dp)
-                )
-                Text(
-                    "NEW",
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(86.dp)
+                OutlinedTextField(
+                    value = newPrice,
+                    onValueChange = { value ->
+                        if (value.matches(Regex("^\\d{0,8}(\\.\\d{0,2})?$"))) {
+                            newPrice = value
+                        }
+                    },
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(48.dp),
+                    label = { Text("₹", fontSize = 10.sp) },
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 14.sp
+                    ),
+                    singleLine = true
                 )
             }
 
@@ -328,36 +334,16 @@ private fun AdminPushScreen(
                                     "—"
                                 else
                                     "₹" + String.format("%.2f", store.currentPrice),
-                                modifier = Modifier.width(58.dp),
+                                modifier = Modifier.width(72.dp),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
-                            )
-
-                            OutlinedTextField(
-                                value = newPrices[store.storeId] ?: "",
-                                onValueChange = { value ->
-                                    if (value.matches(Regex("^\\d{0,8}(\\.\\d{0,2})?$"))) {
-                                        newPrices = newPrices + (store.storeId to value)
-                                    }
-                                },
-                                modifier = Modifier
-                                    .width(96.dp)
-                                    .height(40.dp),
-                                label = { Text("₹", fontSize = 9.sp) },
-                                textStyle = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 12.sp
-                                ),
-                                singleLine = true,
-                                enabled = true
                             )
                         }
                     }
                 }
             }
 
-            val readyCount = selectedStoreIds.count {
-                !newPrices[it].isNullOrBlank() && newPrices[it]?.toDoubleOrNull() != null
-            }
+            val readyToPush = newPrice.isNotBlank() && newPrice.toDoubleOrNull() != null
 
             if (error.isNotBlank()) {
                 Text(error, color = MaterialTheme.colorScheme.error)
@@ -371,7 +357,7 @@ private fun AdminPushScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !publishing &&
                     selectedStoreIds.isNotEmpty() &&
-                    readyCount == selectedStoreIds.size
+                    readyToPush
             ) {
                 Text("PUSH TO " + selectedStoreIds.size + " STORE(S)")
             }
@@ -383,12 +369,8 @@ private fun AdminPushScreen(
     }
 
     if (confirm && selectedPlu != null) {
-        val grouped = selectedStoreIds
-            .mapNotNull { id ->
-                val price = newPrices[id]?.toDoubleOrNull() ?: return@mapNotNull null
-                id to price
-            }
-            .groupBy({ it.second }, { it.first })
+        val pushPrice = newPrice.toDoubleOrNull() ?: 0.0
+        val grouped = mapOf(pushPrice to selectedStoreIds.toList())
 
         AlertDialog(
             onDismissRequest = { if (!publishing) confirm = false },
@@ -396,8 +378,8 @@ private fun AdminPushScreen(
             text = {
                 Text(
                     selectedPlu!!.name + "\n" +
-                        grouped.size + " price group(s) • " +
-                        selectedStoreIds.size + " store(s)\n\n" +
+                        "New price: ₹" + String.format("%.2f", pushPrice) + "\n" +
+                        selectedStoreIds.size + " store(s) selected\n\n" +
                         "Only selected stores will receive these pending updates. " +
                         "The physical scales are not changed by this action."
                 )
@@ -445,7 +427,7 @@ private fun AdminPushScreen(
                                     ""
                             } else {
                                 message =
-                                    "Published $successCount price group(s) for " +
+                                    "Published ₹" + String.format("%.2f", pushPrice) + " to " +
                                         selectedStoreIds.size + " store(s)."
                             }
 
