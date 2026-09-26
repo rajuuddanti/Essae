@@ -35,7 +35,7 @@ alter table public.store_price_change_log
 -- 2. ADMIN PUSH VIEW
 -- ============================================================
 -- Returns the confirmed physical-scale price plus the latest
--- received-but-not-uploaded Admin Push date for each store.
+-- received-but-not-uploaded Admin Push date and price for each store.
 --
 -- The pending date comes from device state = SYNCED.
 -- Once the physical upload succeeds, that device state becomes
@@ -53,7 +53,8 @@ returns table (
     current_price numeric,
     last_uploaded_at timestamptz,
     device_ip text,
-    pending_pushed_at timestamptz
+    pending_pushed_at timestamptz,
+    pending_pushed_price numeric
 )
 language plpgsql
 security definer
@@ -117,33 +118,39 @@ begin
         from current_candidates
     ),
     pending_by_store as (
-        select
+        select distinct on (ds.store_id)
             ds.store_id,
-            max(ds.synced_at) as pending_pushed_at
+            ds.synced_at as pending_pushed_at,
+            (item->>'new_price')::numeric as pending_pushed_price
         from public.admin_price_update_device_state ds
         join public.admin_price_updates u
             on u.id = ds.update_id
+        cross join lateral jsonb_array_elements(
+            case
+                when jsonb_typeof(u.items) = 'array'
+                then u.items
+                else '[]'::jsonb
+            end
+        ) item
         where ds.status = 'SYNCED'
-          and exists (
-              select 1
-              from jsonb_array_elements(
-                  case
-                      when jsonb_typeof(u.items) = 'array'
-                      then u.items
-                      else '[]'::jsonb
-                  end
-              ) item
-              where (item->>'plu_no')::integer = p_plu_no
-          )
-        group by ds.store_id
+          and (item->>'plu_no')::integer = p_plu_no
+        order by ds.store_id, ds.synced_at desc, u.created_at desc
     ),
     legacy_pending as (
-        select
+        select distinct on (t.store_id)
             t.store_id,
-            max(t.synced_at) as pending_pushed_at
+            t.synced_at as pending_pushed_at,
+            (item->>'new_price')::numeric as pending_pushed_price
         from public.admin_price_update_targets t
         join public.admin_price_updates u
             on u.id = t.update_id
+        cross join lateral jsonb_array_elements(
+            case
+                when jsonb_typeof(u.items) = 'array'
+                then u.items
+                else '[]'::jsonb
+            end
+        ) item
         where t.status = 'SYNCED'
           and not exists (
               select 1
@@ -151,18 +158,8 @@ begin
               where ds.update_id = t.update_id
                 and ds.store_id = t.store_id
           )
-          and exists (
-              select 1
-              from jsonb_array_elements(
-                  case
-                      when jsonb_typeof(u.items) = 'array'
-                      then u.items
-                      else '[]'::jsonb
-                  end
-              ) item
-              where (item->>'plu_no')::integer = p_plu_no
-          )
-        group by t.store_id
+          and (item->>'plu_no')::integer = p_plu_no
+        order by t.store_id, t.synced_at desc, u.created_at desc
     )
     select
         rc.store_id,
@@ -172,7 +169,9 @@ begin
         rc.last_uploaded_at,
         rc.device_ip,
         coalesce(pb.pending_pushed_at, lp.pending_pushed_at)
-            as pending_pushed_at
+            as pending_pushed_at,
+        coalesce(pb.pending_pushed_price, lp.pending_pushed_price)
+            as pending_pushed_price
     from ranked_current rc
     left join pending_by_store pb
         on pb.store_id = rc.store_id
