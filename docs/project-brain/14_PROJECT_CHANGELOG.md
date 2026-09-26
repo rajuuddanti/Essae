@@ -66,4 +66,18 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - For a controlled test only, `log_pending_price_changes` now also upserts `store_price_current` when a phone changes a local price.
 - This temporary behavior intentionally makes Admin Push see the changed phone price before Essae Upload All, so store → cloud → admin visibility can be verified.
 - This must be reverted after the test so `store_price_current` again represents the confirmed physical-scale price after successful Essae upload.
+## 2026-09-25 — Admin Push Store Sync + Compact Store View
+
+- Confirmed Store → Admin visibility works: a local store price change appears in Admin Push without Essae upload under the temporary test mode.
+- Added store-side Admin Push polling for registered devices using the multi-device v2 RPCs:
+  - `store_get_pending_admin_price_updates_v2`
+  - `store_mark_admin_price_updates_synced_v2`
+- Pending Admin Push prices are now applied to local Room when the store app opens/resumes; the physical scale is still not changed by Sync.
+- Admin Push store rows were compacted:
+  - store name only (store code removed)
+  - running price
+  - new-price field
+  - `LC: dd-MM-yyyy, HH:mm` in Asia/Kolkata
+  - removed long "No confirmed scale price" / ISO timestamp text.
+- The existing temporary Store → Admin test behavior remains intentionally active until the reverse flow is verified, then it must be reverted.
 
