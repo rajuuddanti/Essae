@@ -80,4 +80,10 @@ Status: **code pushed; Supabase migration and Android build/device test still re
   - `LC: dd-MM-yyyy, HH:mm` in Asia/Kolkata
   - removed long "No confirmed scale price" / ISO timestamp text.
 - The existing temporary Store → Admin test behavior remains intentionally active until the reverse flow is verified, then it must be reverted.
+## 2026-09-26 — TEMP TEST: Admin Push Current Price + Store Highlight
+
+- Clarified the two-price test state: the store Room price can move to the Admin Push value while the cloud `store_price_current` may still contain the prior confirmed value.
+- In temporary test mode, Admin Push sync now also writes the pushed price to `store_price_current` through `log_pending_price_changes`, so Admin immediately sees the same running price.
+- Store Admin Push sync now returns the exact PLU numbers applied and marks those PLUs as changed in the main Scale Manager UI immediately.
+- This is test-only behavior and must be reverted before production so `store_price_current` again represents the successfully uploaded physical-scale price.
 
