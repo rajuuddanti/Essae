@@ -208,7 +208,7 @@ class StoreAdminPushSync(private val context: Context) {
                     .put("p_plu_count", pluCount)
             )
 
-            val value = JSONTokener(response.ifBlank { """" }).nextValue()
+            val value = JSONTokener(response.ifBlank { "\"\"" }).nextValue()
             when (value) {
                 is String -> value
                 else -> value.toString()
