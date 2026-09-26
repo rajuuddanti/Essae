@@ -87,3 +87,13 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - Store Admin Push sync now returns the exact PLU numbers applied and marks those PLUs as changed in the main Scale Manager UI immediately.
 - This is test-only behavior and must be reverted before production so `store_price_current` again represents the successfully uploaded physical-scale price.
 
+
+
+## 2026-09-26 — stale Admin Push overwrite fix
+
+- Root cause identified from end-to-end Admin Push/store behavior: an older pending Admin Push could remain eligible for device polling and overwrite a newer local MANUAL/CSV price change.
+- Updated `supabase/MahaMart_MULTI_DEVICE_REGISTRATION_MIGRATION.sql` function `store_get_pending_admin_price_updates_v2` to ignore an Admin Push when a newer local MANUAL/CSV change exists for the same device and PLU.
+- Example protected flow: Admin Push ₹90 → store changes to ₹69.90 → old ₹90 must not return on the next polling cycle.
+- A genuinely newer Admin Push remains eligible because its `created_at` is newer than the local change.
+- Commit: `3b2c3189b679a367736182d9f0afbf66ad85b794`.
+- Live Supabase must have this function applied through SQL Editor before testing; changing the repository SQL alone does not alter the live database.
