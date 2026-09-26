@@ -328,8 +328,8 @@ private fun AdminPushScreen(
                                     "—"
                                 else
                                     "₹" + String.format("%.2f", store.currentPrice),
-                                modifier = Modifier.width(62.dp),
-                                fontSize = 13.sp,
+                                modifier = Modifier.width(58.dp),
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
 
@@ -340,8 +340,13 @@ private fun AdminPushScreen(
                                         newPrices = newPrices + (store.storeId to value)
                                     }
                                 },
-                                modifier = Modifier.width(76.dp),
-                                label = { Text("₹", fontSize = 10.sp) },
+                                modifier = Modifier
+                                    .width(62.dp)
+                                    .height(40.dp),
+                                label = { Text("₹", fontSize = 9.sp) },
+                                textStyle = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 12.sp
+                                ),
                                 singleLine = true,
                                 enabled = checked
                             )
