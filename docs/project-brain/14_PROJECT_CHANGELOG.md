@@ -97,3 +97,28 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - A genuinely newer Admin Push remains eligible because its `created_at` is newer than the local change.
 - Commit: `3b2c3189b679a367736182d9f0afbf66ad85b794`.
 - Live Supabase must have this function applied through SQL Editor before testing; changing the repository SQL alone does not alter the live database.
+
+
+## 2026-09-26 — Final Admin Push → Store → Scale LC Lifecycle
+
+- Admin Push master price is based only on the current/running price that is repeated across at least 2 stores.
+- If no price repeats in at least 2 stores, Master Price displays —.
+- The Admin PLU list no longer displays the local phone plu.unitPrice as if it were the Master Price.
+- Admin Push detail continues to show every store's own current/confirmed selling price.
+- Admin enters one NEW PRICE and selects one or more stores; the same price is published to all selected stores.
+- Store receipt of an Admin Push:
+  - local Room PLU price changes to the pushed price
+  - SKU becomes RED/CHANGED
+  - physical Essae scale is not changed by Sync
+  - confirmed Admin LC remains the previous physical-scale upload
+  - Admin detail additionally shows the received-but-not-uploaded push date as (dd-MM)*
+- Physical Essae upload:
+  - store_price_current is updated only by complete_scale_upload()
+  - Admin LC moves to the physical upload timestamp
+  - matching Admin Push device state changes from SYNCED to UPLOADED
+  - pending (dd-MM)* disappears
+  - local RED/CHANGED state is cleared after successful physical upload
+- Added supabase/MahaMart_ADMIN_PUSH_LC_AND_UPLOAD_MIGRATION.sql.
+- Added Android cloud upload-session calls around the existing Essae transport without modifying EssaeTransport.kt.
+- Android now sends explicit JSON arrays for Admin Push price-change logging.
+- Live SQL/application must be updated with the new migration before the final end-to-end test.
