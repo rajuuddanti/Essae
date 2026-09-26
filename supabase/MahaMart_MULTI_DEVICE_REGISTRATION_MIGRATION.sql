@@ -361,6 +361,30 @@ begin
           where ds.update_id = u.id
             and ds.device_id = trim(p_device_id)
       )
+      -- A newer local MANUAL/CSV change must not be overwritten by an
+      -- older Admin Push that was still waiting in the cloud.
+      --
+      -- Example:
+      --   Admin Push -> 90
+      --   Store changes -> 69.90
+      --   old 90 must NOT come back down on the next 10-second poll.
+      and u.created_at > coalesce(
+          (
+              select max(l.changed_at)
+              from public.store_price_change_log l
+              where l.device_id = trim(p_device_id)
+                and l.plu_no = any (
+                    array(
+                        select (item->>'plu_no')::integer
+                        from jsonb_array_elements(coalesce(u.items, '[]'::jsonb)) item
+                        where item ? 'plu_no'
+                    )
+                )
+                and l.source in ('MANUAL', 'CSV')
+                and l.changed_at is not null
+          ),
+          '-infinity'::timestamptz
+      )
     order by u.created_at asc;
 end;
 $$;
