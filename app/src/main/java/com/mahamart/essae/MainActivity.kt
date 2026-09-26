@@ -480,6 +480,7 @@ fun EssaeApp(db: AppDatabase) {
         }
 
         vm.retryUnsyncedAudits()
+        vm.syncAdminPush()
     }
 
     val pluList by
@@ -514,6 +515,7 @@ fun EssaeApp(db: AppDatabase) {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                vm.syncAdminPush()
                 val prefs = context.getSharedPreferences(
                     "store_device_registration",
                     Context.MODE_PRIVATE
