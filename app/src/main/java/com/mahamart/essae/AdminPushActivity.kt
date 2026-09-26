@@ -209,6 +209,14 @@ private fun AdminPushScreen(
             }
         } else {
             val plu = selectedPlu!!
+            val masterPrice = storePrices
+                .mapNotNull { it.currentPrice }
+                .groupingBy { it }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.let { (price, count) ->
+                    if (count >= 2) price else null
+                }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -231,7 +239,10 @@ private fun AdminPushScreen(
             )
 
             Text(
-                "Master price: ₹" + String.format("%.2f", plu.unitPrice),
+                "Master price: " + (
+                    masterPrice?.let { "₹" + String.format("%.2f", it) }
+                        ?: "—"
+                    ),
                 style = MaterialTheme.typography.bodySmall
             )
 
@@ -252,8 +263,8 @@ private fun AdminPushScreen(
                         }
                     },
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(48.dp),
+                        .width(130.dp)
+                        .height(56.dp),
                     label = { Text("₹", fontSize = 10.sp) },
                     textStyle = MaterialTheme.typography.bodySmall.copy(
                         fontSize = 14.sp
