@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -293,7 +294,7 @@ private fun AdminPushScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp),
+                                .padding(vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -310,6 +311,7 @@ private fun AdminPushScreen(
                             ) {
                                 Text(
                                     store.storeName,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -317,7 +319,7 @@ private fun AdminPushScreen(
 
                                 Text(
                                     "LC: " + formatIstLastChanged(store.lastUploadedAt),
-                                    style = MaterialTheme.typography.bodySmall
+                                    fontSize = 10.sp
                                 )
                             }
 
@@ -326,7 +328,8 @@ private fun AdminPushScreen(
                                     "—"
                                 else
                                     "₹" + String.format("%.2f", store.currentPrice),
-                                modifier = Modifier.width(70.dp),
+                                modifier = Modifier.width(62.dp),
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
 
@@ -337,8 +340,8 @@ private fun AdminPushScreen(
                                         newPrices = newPrices + (store.storeId to value)
                                     }
                                 },
-                                modifier = Modifier.width(82.dp),
-                                label = { Text("₹") },
+                                modifier = Modifier.width(76.dp),
+                                label = { Text("₹", fontSize = 10.sp) },
                                 singleLine = true,
                                 enabled = checked
                             )
