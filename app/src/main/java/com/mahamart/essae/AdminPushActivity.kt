@@ -459,6 +459,8 @@ private fun AdminPushScreen(
             }
         )
     }
+}
+
 private fun formatIstLastChanged(value: String?): String {
     if (value.isNullOrBlank()) return "—"
 
@@ -475,4 +477,3 @@ private fun formatIstLastChanged(value: String?): String {
     }
 }
 
-}
