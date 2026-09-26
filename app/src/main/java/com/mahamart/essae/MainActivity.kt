@@ -277,32 +277,76 @@ class MainVm(
         viewModelScope.launch {
 
             status =
+                "Preparing upload session for ${all.size} PLUs..."
+
+            val sessionResult =
+                adminPushSync.startScaleUpload(
+                    pluCount = all.size,
+                    scaleIp = host
+                )
+
+            val sessionId =
+                sessionResult.getOrElse {
+                    status =
+                        "Cloud upload session warning: ${it.message ?: "Unknown error"}. Continuing with scale upload."
+                    ""
+                }
+
+            status =
                 "Uploading ${all.size} PLUs directly to " +
                         "$host:$port ..."
 
-            status =
-                transport.uploadSelectedDirect(
-                    host,
-                    port.toIntOrNull() ?: 4321,
-                    all
-                ) { done, total, plu ->
+            transport.uploadSelectedDirect(
+                host,
+                port.toIntOrNull() ?: 4321,
+                all
+            ) { done, total, plu ->
 
-                    status =
-                        "Uploading $done / $total — " +
-                                "PLU ${plu.number} ${plu.name}"
+                status =
+                    "Uploading $done / $total — " +
+                            "PLU ${plu.number} ${plu.name}"
 
-                }.fold(
-                    {
-                        auditDao.markAllPendingUploaded()
-                        changedPluNumbers = emptySet()
-                        "Upload complete — all pending price changes are now uploaded."
-                    },
-                    {
-                        "Direct bulk upload failed: ${
+            }.fold(
+                {
+                    // The physical Essae upload has succeeded.
+                    // Only now is the cloud allowed to move LC/current
+                    // price and Admin Push state to UPLOADED.
+                    val cloudResult =
+                        adminPushSync.completeScaleUpload(
+                            sessionId = sessionId,
+                            scaleIp = host,
+                            plus = all
+                        )
+
+                    auditDao.markAllPendingUploaded()
+                    changedPluNumbers = emptySet()
+
+                    cloudResult.fold(
+                        onSuccess = {
+                            "Upload complete — LC updated from the physical scale upload."
+                        },
+                        onFailure = {
+                            if (sessionId.isBlank()) {
+                                "Upload complete — cloud confirmation was not recorded."
+                            } else {
+                                "Upload complete — cloud confirmation failed: ${it.message ?: "Unknown error"}"
+                            }
+                        }
+                    )
+                },
+                {
+                    if (sessionId.isNotBlank()) {
+                        adminPushSync.failScaleUpload(
+                            sessionId,
                             it.message ?: "Unknown error"
-                        }"
+                        )
                     }
-                )
+
+                    "Direct bulk upload failed: ${
+                        it.message ?: "Unknown error"
+                    }"
+                }
+            )
         }
     }
 
