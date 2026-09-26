@@ -213,7 +213,8 @@ private fun AdminPushScreen(
                             )
                         }
                         Text(
-                            "₹" + String.format("%.2f", plu.unitPrice),
+                            "STORE PRICES →",
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -221,13 +222,20 @@ private fun AdminPushScreen(
             }
         } else {
             val plu = selectedPlu!!
-            val masterPrice = storePrices
+            val repeatedMasterPrices = storePrices
                 .mapNotNull { it.currentPrice }
                 .groupingBy { it }
                 .eachCount()
-                .maxByOrNull { it.value }
-                ?.let { (price, count) ->
-                    if (count >= 2) price else null
+                .filterValues { it >= 2 }
+
+            // A Master Price exists only when one price is shared by
+            // at least two stores. If multiple prices tie, there is
+            // no single unambiguous Master Price.
+            val masterPrice =
+                if (repeatedMasterPrices.size == 1) {
+                    repeatedMasterPrices.keys.first()
+                } else {
+                    null
                 }
 
             Row(
@@ -347,7 +355,10 @@ private fun AdminPushScreen(
                                 )
 
                                 Text(
-                                    "LC: " + formatIstLastChanged(store.lastUploadedAt),
+                                    buildLastChangedText(
+                                        store.lastUploadedAt,
+                                        store.pendingPushedAt
+                                    ),
                                     fontSize = 10.sp
                                 )
                             }
@@ -472,6 +483,34 @@ private fun AdminPushScreen(
             }
         )
     }
+}
+
+private fun buildLastChangedText(
+    lastUploadedAt: String?,
+    pendingPushedAt: String?
+): String {
+    val confirmed = formatIstLastChanged(lastUploadedAt)
+
+    if (pendingPushedAt.isNullOrBlank()) {
+        return "LC: $confirmed"
+    }
+
+    val pushedDate = formatIstDayMonth(pendingPushedAt)
+    return if (pushedDate == null) {
+        "LC: $confirmed*"
+    } else {
+        "LC: $confirmed ($pushedDate)*"
+    }
+}
+
+private fun formatIstDayMonth(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+
+    return runCatching {
+        Instant.parse(value)
+            .atZone(ZoneId.of("Asia/Kolkata"))
+            .format(DateTimeFormatter.ofPattern("dd-MM"))
+    }.getOrNull()
 }
 
 private fun formatIstLastChanged(value: String?): String {
