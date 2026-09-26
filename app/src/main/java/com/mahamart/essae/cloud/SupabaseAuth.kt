@@ -138,6 +138,8 @@ class SupabaseAuth(context: Context) {
                                 else row.optDouble("current_price"),
                                 lastUploadedAt = row.optString("last_uploaded_at")
                                     .ifBlank { null },
+                                pendingPushedAt = row.optString("pending_pushed_at")
+                                    .ifBlank { null },
                                 deviceIp = row.optString("device_ip").ifBlank { null }
                             )
                         )
@@ -342,6 +344,7 @@ class SupabaseAuth(context: Context) {
         val storeName: String,
         val currentPrice: Double?,
         val lastUploadedAt: String?,
+        val pendingPushedAt: String?,
         val deviceIp: String?
     )
 
