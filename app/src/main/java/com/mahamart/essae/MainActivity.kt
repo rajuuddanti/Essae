@@ -374,13 +374,13 @@ class MainVm(
                 insertAudit = { audit -> auditDao.insert(audit) }
             )
 
-            result.onSuccess { count ->
-                if (count > 0) {
+            result.onSuccess { pluNumbers ->
+                if (pluNumbers.isNotEmpty()) {
                     changedPluNumbers =
-                        changedPluNumbers +
-                            auditDao.getPendingAdminPushPluNumbers().toSet()
+                        changedPluNumbers + pluNumbers.toSet()
 
-                    status = "Admin Push synced: $count price(s)."
+                    status =
+                        "Admin Push synced: ${pluNumbers.size} price(s)."
                 }
             }
         }
