@@ -341,7 +341,7 @@ private fun AdminPushScreen(
                                     }
                                 },
                                 modifier = Modifier
-                                    .width(62.dp)
+                                    .width(96.dp)
                                     .height(40.dp),
                                 label = { Text("₹", fontSize = 9.sp) },
                                 textStyle = MaterialTheme.typography.bodySmall.copy(
