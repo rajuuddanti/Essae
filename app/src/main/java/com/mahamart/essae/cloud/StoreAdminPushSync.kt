@@ -57,7 +57,7 @@ class StoreAdminPushSync(private val context: Context) {
         currentPlus: List<Plu>,
         upsert: suspend (Plu) -> Unit,
         insertAudit: suspend (PriceChangeAudit) -> Unit
-    ): Result<Int> = withContext(Dispatchers.IO) {
+    ): Result<List<Int>> = withContext(Dispatchers.IO) {
         runCatching {
             require(baseUrl.isNotBlank()) { "Supabase URL is missing." }
             require(publishableKey.isNotBlank()) {
@@ -92,7 +92,7 @@ class StoreAdminPushSync(private val context: Context) {
             }
 
             val updateIds = mutableListOf<String>()
-            var applied = 0
+            val appliedPluNumbers = linkedSetOf<Int>()
 
             for (i in 0 until rows.length()) {
                 val row = rows.getJSONObject(i)
@@ -140,9 +140,23 @@ class StoreAdminPushSync(private val context: Context) {
                                 cloudSynced = true
                             )
                         )
-                        applied++
+                        appliedPluNumbers += pluNo
                     }
                 }
+
+                // TEMP TEST MODE:
+                // Treat an Admin Push price change as the current store
+                // price immediately, so the Admin screen can verify the
+                // store's new price before physical Essae upload.
+                rpc(
+                    "log_pending_price_changes",
+                    JSONObject()
+                        .put("p_device_ip", ip)
+                        .put("p_device_id", id)
+                        .put("p_scale_ip", "")
+                        .put("p_source", "ADMIN_PUSH")
+                        .put("p_items", items)
+                )
 
                 updateIds += updateId
             }
@@ -159,7 +173,7 @@ class StoreAdminPushSync(private val context: Context) {
                 )
             }
 
-            applied
+            appliedPluNumbers.toList()
         }
     }
 
