@@ -76,6 +76,7 @@ import com.mahamart.essae.cloud.StoreAdminPushSync
 import com.mahamart.essae.network.EssaeTransport
 import com.mahamart.essae.util.CsvImporter
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -376,10 +377,8 @@ class MainVm(
             result.onSuccess { count ->
                 if (count > 0) {
                     changedPluNumbers =
-                        changedPluNumbers + auditDao.getUnsynced()
-                            .filter { it.source == "ADMIN_PUSH" }
-                            .map { it.pluNo }
-                            .toSet()
+                        changedPluNumbers +
+                            auditDao.getPendingAdminPushPluNumbers().toSet()
 
                     status = "Admin Push synced: $count price(s)."
                 }
@@ -450,6 +449,13 @@ fun EssaeApp(db: AppDatabase) {
                     }
                 }
         )
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(10000)
+            vm.syncAdminPush()
+        }
+    }
 
     LaunchedEffect(Unit) {
         val seedPrefs = context.getSharedPreferences(
