@@ -72,6 +72,7 @@ import com.mahamart.essae.data.PluDao
 import com.mahamart.essae.data.PriceChangeAudit
 import com.mahamart.essae.data.PriceChangeAuditDao
 import com.mahamart.essae.cloud.ManualPriceAuditSync
+import com.mahamart.essae.cloud.StoreAdminPushSync
 import com.mahamart.essae.network.EssaeTransport
 import com.mahamart.essae.util.CsvImporter
 import kotlinx.coroutines.flow.SharingStarted
@@ -153,6 +154,7 @@ class MainVm(
 
     private val transport = EssaeTransport()
     private val auditSync = ManualPriceAuditSync(context.applicationContext)
+    private val adminPushSync = StoreAdminPushSync(context.applicationContext)
 
     /*
      * UI marker for the current local edit session.
@@ -359,6 +361,28 @@ class MainVm(
             } else {
                 status =
                     "PLU ${plu.number} price unchanged."
+            }
+        }
+    }
+
+    fun syncAdminPush() {
+        viewModelScope.launch {
+            val result = adminPushSync.pullAndApply(
+                currentPlus = plus.value,
+                upsert = { plu -> dao.upsert(plu) },
+                insertAudit = { audit -> auditDao.insert(audit) }
+            )
+
+            result.onSuccess { count ->
+                if (count > 0) {
+                    changedPluNumbers =
+                        changedPluNumbers + auditDao.getUnsynced()
+                            .filter { it.source == "ADMIN_PUSH" }
+                            .map { it.pluNo }
+                            .toSet()
+
+                    status = "Admin Push synced: $count price(s)."
+                }
             }
         }
     }
