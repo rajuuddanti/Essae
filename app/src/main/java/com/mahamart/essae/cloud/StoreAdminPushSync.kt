@@ -1,0 +1,259 @@
+package com.mahamart.essae.cloud
+
+import android.content.Context
+import android.provider.Settings
+import com.mahamart.essae.BuildConfig
+import com.mahamart.essae.data.Plu
+import com.mahamart.essae.data.PriceChangeAudit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import org.json.JSONTokener
+import java.net.HttpURLConnection
+import java.net.NetworkInterface
+import java.net.URL
+
+/**
+ * Pulls Admin Push updates for the currently registered physical device.
+ *
+ * Admin Push is cloud -> store:
+ *   Supabase pending update -> Room price -> local PENDING audit -> ACK SYNCED.
+ *
+ * It does not upload to Essae. Upload All remains the physical-scale step.
+ */
+class StoreAdminPushSync(private val context: Context) {
+
+    private val appContext = context.applicationContext
+    private val baseUrl = BuildConfig.SUPABASE_URL.trimEnd('/')
+    private val publishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
+
+    private val registrationPrefs =
+        appContext.getSharedPreferences(
+            "store_device_registration",
+            Context.MODE_PRIVATE
+        )
+
+    fun deviceId(): String =
+        Settings.Secure.getString(
+            appContext.contentResolver,
+            Settings.Secure.ANDROID_ID
+        ).orEmpty()
+
+    fun deviceIp(): String = try {
+        NetworkInterface.getNetworkInterfaces().toList()
+            .asSequence()
+            .flatMap { it.inetAddresses.toList().asSequence() }
+            .firstOrNull {
+                !it.isLoopbackAddress &&
+                    it.hostAddress?.contains(":") == false
+            }
+            ?.hostAddress ?: ""
+    } catch (_: Exception) {
+        ""
+    }
+
+    suspend fun pullAndApply(
+        currentPlus: List<Plu>,
+        upsert: suspend (Plu) -> Unit,
+        insertAudit: suspend (PriceChangeAudit) -> Unit
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        runCatching {
+            require(baseUrl.isNotBlank()) { "Supabase URL is missing." }
+            require(publishableKey.isNotBlank()) {
+                "Supabase publishable key is missing."
+            }
+
+            if (!registrationPrefs.getBoolean("registered", false)) {
+                return@runCatching 0
+            }
+
+            val id = deviceId().trim()
+            if (id.isBlank()) return@runCatching 0
+
+            val ip = deviceIp()
+            val pending = rpc(
+                "store_get_pending_admin_price_updates_v2",
+                JSONObject()
+                    .put("p_device_id", id)
+                    .put("p_device_ip", ip)
+            )
+
+            val rows = when (val value =
+                JSONTokener(pending.ifBlank { "[]" }).nextValue()
+            ) {
+                is JSONArray -> value
+                is JSONObject -> JSONArray().put(value)
+                else -> JSONArray()
+            }
+
+            if (rows.length() == 0) {
+                return@runCatching 0
+            }
+
+            val updateIds = mutableListOf<String>()
+            var applied = 0
+
+            for (i in 0 until rows.length()) {
+                val row = rows.getJSONObject(i)
+                val updateId = row.optString("update_id").trim()
+                if (updateId.isBlank()) continue
+
+                val items = parseItems(row.opt("items"))
+                val itemList = items
+                    .filter { it.has("plu_no") && it.has("new_price") }
+
+                if (itemList.isEmpty()) continue
+
+                for (item in itemList) {
+                    val pluNo = item.optInt("plu_no", -1)
+                    val newPrice = item.optDouble("new_price", Double.NaN)
+                    if (pluNo < 0 || newPrice.isNaN()) continue
+
+                    val existing = currentPlus.firstOrNull {
+                        it.number == pluNo
+                    }
+
+                    val plu = existing?.copy(unitPrice = newPrice)
+                        ?: Plu(
+                            number = pluNo,
+                            name = item.optString("plu_name"),
+                            code = item.optString("plu_code"),
+                            uom = item.optInt("uom", 0),
+                            unitPrice = newPrice
+                        )
+
+                    upsert(plu)
+
+                    if (existing == null || existing.unitPrice != newPrice) {
+                        insertAudit(
+                            PriceChangeAudit(
+                                pluNo = plu.number,
+                                pluName = plu.name,
+                                oldPrice = existing?.unitPrice ?: 0.0,
+                                newPrice = newPrice,
+                                source = "ADMIN_PUSH",
+                                status = "PENDING",
+                                deviceIp = ip,
+                                deviceId = id,
+                                scaleIp = "",
+                                cloudSynced = true
+                            )
+                        )
+                        applied++
+                    }
+                }
+
+                updateIds += updateId
+            }
+
+            if (updateIds.isNotEmpty()) {
+                rpc(
+                    "store_mark_admin_price_updates_synced_v2",
+                    JSONObject()
+                        .put("p_device_id", id)
+                        .put(
+                            "p_update_ids",
+                            JSONArray(updateIds)
+                        )
+                )
+            }
+
+            applied
+        }
+    }
+
+    private fun parseItems(value: Any?): List<JSONObject> {
+        return when (value) {
+            is JSONArray -> {
+                (0 until value.length()).mapNotNull {
+                    value.optJSONObject(it)
+                }
+            }
+            is String -> {
+                runCatching {
+                    val parsed = JSONTokener(value).nextValue()
+                    if (parsed is JSONArray) {
+                        (0 until parsed.length()).mapNotNull {
+                            parsed.optJSONObject(it)
+                        }
+                    } else {
+                        emptyList()
+                    }
+                }.getOrDefault(emptyList())
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun rpc(
+        function: String,
+        body: JSONObject
+    ): String {
+        val connection =
+            (URL(
+                "$baseUrl/rest/v1/rpc/$function"
+            ).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = 10000
+                readTimeout = 10000
+                setRequestProperty("apikey", publishableKey)
+                setRequestProperty(
+                    "Authorization",
+                    "Bearer $publishableKey"
+                )
+                setRequestProperty(
+                    "Content-Type",
+                    "application/json"
+                )
+                setRequestProperty(
+                    "Accept",
+                    "application/json"
+                )
+            }
+
+        connection.outputStream.use {
+            it.write(
+                body.toString()
+                    .toByteArray(Charsets.UTF_8)
+            )
+        }
+
+        val responseCode = connection.responseCode
+        val stream =
+            if (responseCode in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+                    ?: connection.inputStream
+            }
+
+        val response =
+            stream.bufferedReader()
+                .use { it.readText() }
+
+        connection.disconnect()
+
+        if (responseCode !in 200..299) {
+            val message =
+                runCatching {
+                    JSONObject(response)
+                        .optString("message")
+                        .ifBlank {
+                            JSONObject(response)
+                                .optString("hint")
+                        }
+                }.getOrDefault("Admin Push sync failed.")
+
+            error(
+                if (message.isBlank())
+                    "Admin Push sync failed ($responseCode)."
+                else
+                    message
+            )
+        }
+
+        return response
+    }
+}
