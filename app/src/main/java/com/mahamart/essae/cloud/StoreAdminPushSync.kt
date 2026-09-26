@@ -182,6 +182,98 @@ class StoreAdminPushSync(private val context: Context) {
         }
     }
 
+    suspend fun startScaleUpload(
+        pluCount: Int,
+        scaleIp: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            require(baseUrl.isNotBlank()) { "Supabase URL is missing." }
+            require(publishableKey.isNotBlank()) {
+                "Supabase publishable key is missing."
+            }
+
+            if (!registrationPrefs.getBoolean("registered", false)) {
+                return@runCatching ""
+            }
+
+            val id = deviceId().trim()
+            if (id.isBlank()) return@runCatching ""
+
+            val response = rpc(
+                "start_scale_upload",
+                JSONObject()
+                    .put("p_device_ip", deviceIp())
+                    .put("p_device_id", id)
+                    .put("p_scale_ip", scaleIp)
+                    .put("p_plu_count", pluCount)
+            )
+
+            val value = JSONTokener(response.ifBlank { """" }).nextValue()
+            when (value) {
+                is String -> value
+                else -> value.toString()
+            }
+        }
+    }
+
+    suspend fun completeScaleUpload(
+        sessionId: String,
+        scaleIp: String,
+        plus: List<Plu>
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (sessionId.isBlank()) return@runCatching 0
+
+            val id = deviceId().trim()
+            if (id.isBlank()) return@runCatching 0
+
+            val items = JSONArray()
+            plus.forEach { plu ->
+                items.put(
+                    JSONObject()
+                        .put("plu_no", plu.number)
+                        .put("plu_name", plu.name)
+                        .put("unit_price", plu.unitPrice)
+                )
+            }
+
+            val response = rpc(
+                "complete_scale_upload",
+                JSONObject()
+                    .put("p_session_id", sessionId)
+                    .put("p_device_ip", deviceIp())
+                    .put("p_device_id", id)
+                    .put("p_scale_ip", scaleIp)
+                    .put("p_items", items)
+            )
+
+            JSONTokener(response.ifBlank { "0" }).nextValue().let {
+                when (it) {
+                    is Number -> it.toInt()
+                    is String -> it.toIntOrNull() ?: 0
+                    else -> 0
+                }
+            }
+        }
+    }
+
+    suspend fun failScaleUpload(
+        sessionId: String,
+        message: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (sessionId.isBlank()) return@runCatching Unit
+
+            rpc(
+                "fail_scale_upload",
+                JSONObject()
+                    .put("p_session_id", sessionId)
+                    .put("p_error_message", message)
+            )
+            Unit
+        }
+    }
+
     private fun parseItems(value: Any?): List<JSONObject> {
         return when (value) {
             is JSONArray -> {
