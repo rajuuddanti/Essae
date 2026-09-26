@@ -11,6 +11,8 @@
 --   LC: 26-09-2026, 14:10
 -- ============================================================
 
+drop function if exists public.admin_get_store_plu_prices(integer);
+
 create or replace function public.admin_get_store_plu_prices(
     p_plu_no integer
 )
