@@ -292,7 +292,11 @@ class MainVm(
                                 "PLU ${plu.number} ${plu.name}"
 
                 }.fold(
-                    { it },
+                    {
+                        auditDao.markAllPendingUploaded()
+                        changedPluNumbers = emptySet()
+                        "Upload complete — all pending price changes are now uploaded."
+                    },
                     {
                         "Direct bulk upload failed: ${
                             it.message ?: "Unknown error"
@@ -375,10 +379,13 @@ class MainVm(
             )
 
             result.onSuccess { pluNumbers ->
-                if (pluNumbers.isNotEmpty()) {
-                    changedPluNumbers =
-                        changedPluNumbers + pluNumbers.toSet()
+                val pendingPluNumbers =
+                    auditDao.getPendingPriceChangePluNumbers()
 
+                changedPluNumbers =
+                    pendingPluNumbers.toSet()
+
+                if (pluNumbers.isNotEmpty()) {
                     status =
                         "Admin Push synced: ${pluNumbers.size} price(s)."
                 }
