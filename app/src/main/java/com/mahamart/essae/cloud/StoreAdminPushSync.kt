@@ -65,7 +65,7 @@ class StoreAdminPushSync(private val context: Context) {
             }
 
             if (!registrationPrefs.getBoolean("registered", false)) {
-                return@runCatching 0
+                return@runCatching emptyList()
             }
 
             val id = deviceId().trim()
