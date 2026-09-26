@@ -262,9 +262,9 @@ class StoreAdminPushSync(private val context: Context) {
 
             error(
                 if (message.isBlank())
-                    "Admin Push sync failed ($responseCode)."
+                    "$function failed ($responseCode)."
                 else
-                    message
+                    "$function failed: $message"
             )
         }
 
