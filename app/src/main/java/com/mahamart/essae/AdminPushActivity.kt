@@ -136,6 +136,18 @@ private fun AdminPushScreen(
         error = ""
     }
 
+    // Keep the Admin detail view in sync with the store's cloud current-price
+    // record. Admin Push creates a pending update; the store receives it first.
+    LaunchedEffect(selectedPlu?.number) {
+        if (selectedPlu == null) return@LaunchedEffect
+
+        while (true) {
+            auth.getStorePluPrices(selectedPlu!!.number)
+                .onSuccess { storePrices = it }
+            kotlinx.coroutines.delay(5000)
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
