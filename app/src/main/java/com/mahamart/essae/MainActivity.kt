@@ -389,6 +389,9 @@ class MainVm(
                     status =
                         "Admin Push synced: ${pluNumbers.size} price(s)."
                 }
+            }.onFailure { error ->
+                status =
+                    "Admin Push sync FAILED: ${error.message ?: "Unknown error"}"
             }
         }
     }
