@@ -122,3 +122,22 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - Added Android cloud upload-session calls around the existing Essae transport without modifying EssaeTransport.kt.
 - Android now sends explicit JSON arrays for Admin Push price-change logging.
 - Live SQL/application must be updated with the new migration before the final end-to-end test.
+
+
+## 2026-09-26 — Stable checkpoint: Admin Push pending price + manual M marker
+
+- Confirmed final price semantics: Admin current price is the last successfully uploaded physical-scale price.
+- Admin Push no longer changes confirmed price before physical upload.
+- Admin detail can show pending Admin Push as (dd-MM)*(newPrice).
+- Added pending_pushed_price to the Admin store-price RPC and Android model.
+- Added last_upload_source to the Admin store-price RPC and Android model.
+- A successfully uploaded MANUAL manager price is displayed with an M marker in LC.
+- A successfully uploaded ADMIN_PUSH price has normal LC with no M marker.
+- Pending state remains until physical Essae upload succeeds.
+- Added docs/project-brain/19_STABLE_CHECKPOINT_2026-09-26.md as the durable resume point.
+- Latest Android commits for this behavior:
+  - 8986f94ac74edc3d2f7c555997bd4f92286b5a0e
+  - a15a4d1335dcb460445666a9d1afd0d0866c1d15
+- Latest SQL migration commit:
+  - 6c0c2cd70992ccbc56a9262bcfe6f6c8681620b0
+- Live Supabase SQL must still be applied separately before final end-to-end validation.
