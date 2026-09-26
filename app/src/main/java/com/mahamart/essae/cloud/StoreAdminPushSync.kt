@@ -69,7 +69,7 @@ class StoreAdminPushSync(private val context: Context) {
             }
 
             val id = deviceId().trim()
-            if (id.isBlank()) return@runCatching 0
+            if (id.isBlank()) return@runCatching emptyList()
 
             val ip = deviceIp()
             val pending = rpc(
@@ -88,7 +88,7 @@ class StoreAdminPushSync(private val context: Context) {
             }
 
             if (rows.length() == 0) {
-                return@runCatching 0
+                return@runCatching emptyList()
             }
 
             val updateIds = mutableListOf<String>()
