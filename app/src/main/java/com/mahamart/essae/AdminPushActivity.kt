@@ -348,7 +348,7 @@ private fun AdminPushScreen(
                                     fontSize = 12.sp
                                 ),
                                 singleLine = true,
-                                enabled = checked
+                                enabled = true
                             )
                         }
                     }
