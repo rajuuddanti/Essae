@@ -358,7 +358,8 @@ private fun AdminPushScreen(
                                     buildLastChangedText(
                                         store.lastUploadedAt,
                                         store.pendingPushedAt,
-                                        store.pendingPushedPrice
+                                        store.pendingPushedPrice,
+                                        store.lastUploadSource
                                     ),
                                     fontSize = 10.sp
                                 )
@@ -489,12 +490,17 @@ private fun AdminPushScreen(
 private fun buildLastChangedText(
     lastUploadedAt: String?,
     pendingPushedAt: String?,
-    pendingPushedPrice: Double?
+    pendingPushedPrice: Double?,
+    lastUploadSource: String?
 ): String {
     val confirmed = formatIstLastChanged(lastUploadedAt)
 
     if (pendingPushedAt.isNullOrBlank()) {
-        return "LC: $confirmed"
+        return if (lastUploadSource.equals("MANUAL", ignoreCase = true)) {
+            "LC: $confirmed M"
+        } else {
+            "LC: $confirmed"
+        }
     }
 
     val pushedDate = formatIstDayMonth(pendingPushedAt)
