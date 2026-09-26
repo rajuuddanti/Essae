@@ -155,7 +155,12 @@ class StoreAdminPushSync(private val context: Context) {
                         .put("p_device_id", id)
                         .put("p_scale_ip", "")
                         .put("p_source", "ADMIN_PUSH")
-                        .put("p_items", items)
+                        .put(
+                            "p_items",
+                            JSONArray().apply {
+                                items.forEach { put(it) }
+                            }
+                        )
                 )
 
                 updateIds += updateId
