@@ -378,7 +378,11 @@ begin
     for item in
         select *
         from jsonb_array_elements(
-            coalesce(p_items, '[]'::jsonb)
+            case
+                when jsonb_typeof(p_items) = 'array'
+                then p_items
+                else '[]'::jsonb
+            end
         )
     loop
         select id
