@@ -54,7 +54,8 @@ returns table (
     last_uploaded_at timestamptz,
     device_ip text,
     pending_pushed_at timestamptz,
-    pending_pushed_price numeric
+    pending_pushed_price numeric,
+    last_upload_source text
 )
 language plpgsql
 security definer
@@ -74,6 +75,16 @@ begin
             s.store_name,
             c.unit_price as current_price,
             c.last_uploaded_at,
+            (
+                select l.source
+                from public.store_price_change_log l
+                where l.device_ip = c.device_ip
+                  and l.plu_no = p_plu_no
+                  and l.status = 'UPLOADED'
+                  and l.new_price = c.unit_price
+                order by l.uploaded_at desc nulls last, l.changed_at desc
+                limit 1
+            ) as last_upload_source,
             c.device_ip,
             1 as source_priority
         from public.stores s
@@ -94,6 +105,16 @@ begin
             s.store_name,
             c.unit_price as current_price,
             c.last_uploaded_at,
+            (
+                select l.source
+                from public.store_price_change_log l
+                where l.device_ip = c.device_ip
+                  and l.plu_no = p_plu_no
+                  and l.status = 'UPLOADED'
+                  and l.new_price = c.unit_price
+                order by l.uploaded_at desc nulls last, l.changed_at desc
+                limit 1
+            ) as last_upload_source,
             c.device_ip,
             2 as source_priority
         from public.stores s
@@ -171,7 +192,8 @@ begin
         coalesce(pb.pending_pushed_at, lp.pending_pushed_at)
             as pending_pushed_at,
         coalesce(pb.pending_pushed_price, lp.pending_pushed_price)
-            as pending_pushed_price
+            as pending_pushed_price,
+        rc.last_upload_source
     from ranked_current rc
     left join pending_by_store pb
         on pb.store_id = rc.store_id
