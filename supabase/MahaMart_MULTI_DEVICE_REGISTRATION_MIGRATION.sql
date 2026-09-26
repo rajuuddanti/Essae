@@ -373,14 +373,19 @@ begin
               select max(l.changed_at)
               from public.store_price_change_log l
               where l.device_id = trim(p_device_id)
-                and l.plu_no = any (
-                    array(
-                        select (item->>'plu_no')::integer
-                        from jsonb_array_elements(coalesce(u.items, '[]'::jsonb)) item
-                        where item ? 'plu_no'
-                    )
-                )
                 and l.source in ('MANUAL', 'CSV')
+                and exists (
+                    select 1
+                    from jsonb_array_elements(
+                        case
+                            when jsonb_typeof(u.items) = 'array'
+                            then u.items
+                            else '[]'::jsonb
+                        end
+                    ) item
+                    where item ? 'plu_no'
+                      and (item->>'plu_no')::integer = l.plu_no
+                )
                 and l.changed_at is not null
           ),
           '-infinity'::timestamptz
