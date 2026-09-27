@@ -167,7 +167,20 @@ class StoreAdminPushSync(private val context: Context) {
                         .put(
                             "p_items",
                             JSONArray().apply {
-                                items.forEach { put(it) }
+                                items.forEach { item ->
+                                    val pluNo = item.optInt("plu_no", -1)
+                                    val existing = currentPlus.firstOrNull {
+                                        it.number == pluNo
+                                    }
+
+                                    put(
+                                        JSONObject(item.toString())
+                                            .put(
+                                                "old_price",
+                                                existing?.unitPrice ?: 0.0
+                                            )
+                                    )
+                                }
                             }
                         )
                 )
