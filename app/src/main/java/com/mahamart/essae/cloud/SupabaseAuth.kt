@@ -192,6 +192,34 @@ class SupabaseAuth(context: Context) {
         }
     }
 
+    suspend fun sendAdminPushNotification(updateId: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = accessToken ?: error("Admin session expired. Sign in again.")
+                require(updateId.isNotBlank()) { "Admin Push update ID is missing." }
+
+                val connection = open(
+                    "$baseUrl/functions/v1/send-admin-push-notification",
+                    "POST",
+                    token
+                )
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.outputStream.use {
+                    it.write(
+                        JSONObject().put("update_id", updateId)
+                            .toString().toByteArray(Charsets.UTF_8)
+                    )
+                }
+
+                val response = readResponse(connection)
+                if (connection.responseCode !in 200..299) {
+                    error(extractError(response, "Could not send store notification."))
+                }
+                Unit
+            }
+        }
+
     suspend fun getRegisteredStoreDevices(): Result<List<StoreDevice>> =
         withContext(Dispatchers.IO) {
             runCatching {
