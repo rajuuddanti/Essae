@@ -182,6 +182,10 @@ begin
 end;
 $$;
 
+revoke all on function public.store_register_device(
+    text, text, text, text
+) from public;
+
 grant execute on function public.store_register_device(
     text, text, text, text
 ) to anon, authenticated;
@@ -234,6 +238,10 @@ begin
     return found;
 end;
 $$;
+
+revoke all on function public.store_touch_device(
+    text, text, text, text
+) from public;
 
 revoke all on function public.store_touch_device(
     text, text, text, text
@@ -338,6 +346,10 @@ revoke all on function public.store_get_pending_admin_price_updates_v2(
     text, text, text
 ) from public;
 
+revoke all on function public.store_get_pending_admin_price_updates_v2(
+    text, text, text
+) from public;
+
 grant execute on function public.store_get_pending_admin_price_updates_v2(
     text, text, text
 ) to anon, authenticated;
@@ -412,6 +424,10 @@ revoke all on function public.store_mark_admin_price_updates_synced_v2(
     text, text, uuid[]
 ) from public;
 
+revoke all on function public.store_mark_admin_price_updates_synced_v2(
+    text, text, uuid[]
+) from public;
+
 grant execute on function public.store_mark_admin_price_updates_synced_v2(
     text, text, uuid[]
 ) to anon, authenticated;
@@ -481,6 +497,10 @@ begin
     return affected;
 end;
 $$;
+
+revoke all on function public.store_mark_admin_price_updates_uploaded_v2(
+    text, text, uuid[]
+) from public;
 
 revoke all on function public.store_mark_admin_price_updates_uploaded_v2(
     text, text, uuid[]
@@ -614,6 +634,10 @@ revoke all on function public.log_pending_price_changes(
     text, text, text, text, text, jsonb
 ) from public;
 
+revoke all on function public.log_pending_price_changes(
+    text, text, text, text, text, jsonb
+) from public;
+
 grant execute on function public.log_pending_price_changes(
     text, text, text, text, text, jsonb
 ) to anon, authenticated;
@@ -658,6 +682,10 @@ begin
     return affected;
 end;
 $$;
+
+revoke all on function public.mark_reverted_price_changes(
+    text, text, integer[]
+) from public;
 
 grant execute on function public.mark_reverted_price_changes(
     text, text, integer[]
@@ -736,6 +764,10 @@ begin
     return new_id;
 end;
 $$;
+
+revoke all on function public.start_scale_upload(
+    text, text, text, text, integer
+) from public;
 
 grant execute on function public.start_scale_upload(
     text, text, text, text, integer
@@ -913,6 +945,10 @@ begin
 end;
 $$;
 
+revoke all on function public.complete_scale_upload(
+    uuid, text, text, text, text, jsonb
+) from public;
+
 grant execute on function public.complete_scale_upload(
     uuid, text, text, text, text, jsonb
 ) to anon, authenticated;
@@ -965,6 +1001,10 @@ begin
     end if;
 end;
 $$;
+
+revoke all on function public.fail_scale_upload(
+    uuid, text, text, text
+) from public;
 
 grant execute on function public.fail_scale_upload(
     uuid, text, text, text
