@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import com.google.firebase.messaging.FirebaseMessaging
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -121,6 +122,11 @@ class MainActivity : ComponentActivity() {
             registrationPrefs.getBoolean("registered", false) &&
             registrationPrefs.getString("device_token", "").orEmpty().isNotBlank()
         ) {
+            FirebaseMessaging.getInstance().token
+                .addOnSuccessListener { token ->
+                    com.mahamart.essae.cloud.FcmTokenRegistrar(applicationContext)
+                        .register(token)
+                }
             requestNotificationPermissionIfNeeded()
         }
 
