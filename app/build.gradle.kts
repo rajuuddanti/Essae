@@ -21,8 +21,8 @@ android {
             val f = rootProject.file("local.properties")
             if (f.exists()) f.inputStream().use { load(it) }
         }
-        buildConfigField("String", "SUPABASE_URL", "\"\${localProps.getProperty("SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"\${localProps.getProperty("SUPABASE_PUBLISHABLE_KEY", "")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL", "")}\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${localProps.getProperty("SUPABASE_PUBLISHABLE_KEY", "")}\"")
     }
     buildFeatures { compose = true; buildConfig = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.10" }
