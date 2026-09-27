@@ -580,7 +580,9 @@ fun EssaeApp(db: AppDatabase) {
                     "store_device_registration",
                     Context.MODE_PRIVATE
                 )
-                deviceRegistered = prefs.getBoolean("registered", false)
+                deviceRegistered =
+                    prefs.getBoolean("registered", false) &&
+                            prefs.getString("device_token", "").orEmpty().isNotBlank()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
