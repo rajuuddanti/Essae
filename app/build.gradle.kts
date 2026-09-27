@@ -3,7 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.kapt")
+    id("org.jetbrains.kotlin.kapt")\n    id("com.google.gms.google-services")
 }
 
 android {
@@ -41,5 +41,5 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.documentfile:documentfile:1.0.1")\n    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))\n    implementation("com.google.firebase:firebase-messaging")
 }
