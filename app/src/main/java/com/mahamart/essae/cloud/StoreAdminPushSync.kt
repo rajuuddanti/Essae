@@ -40,6 +40,9 @@ class StoreAdminPushSync(private val context: Context) {
             Settings.Secure.ANDROID_ID
         ).orEmpty()
 
+    private fun deviceToken(): String =
+        registrationPrefs.getString("device_token", "").orEmpty()
+
     fun deviceIp(): String = try {
         NetworkInterface.getNetworkInterfaces().toList()
             .asSequence()
@@ -71,11 +74,17 @@ class StoreAdminPushSync(private val context: Context) {
             val id = deviceId().trim()
             if (id.isBlank()) return@runCatching emptyList()
 
+            val token = deviceToken().trim()
+            require(token.isNotBlank()) {
+                "Device security registration required. Re-register this phone."
+            }
+
             val ip = deviceIp()
             val pending = rpc(
                 "store_get_pending_admin_price_updates_v2",
                 JSONObject()
                     .put("p_device_id", id)
+                    .put("p_device_token", token)
                     .put("p_device_ip", ip)
             )
 
@@ -153,6 +162,7 @@ class StoreAdminPushSync(private val context: Context) {
                     JSONObject()
                         .put("p_device_ip", ip)
                         .put("p_device_id", id)
+                        .put("p_device_token", token)
                         .put("p_scale_ip", "")
                         .put("p_source", "ADMIN_PUSH")
                         .put(
@@ -171,6 +181,7 @@ class StoreAdminPushSync(private val context: Context) {
                     "store_mark_admin_price_updates_synced_v2",
                     JSONObject()
                         .put("p_device_id", id)
+                        .put("p_device_token", token)
                         .put(
                             "p_update_ids",
                             JSONArray(updateIds)
@@ -199,11 +210,17 @@ class StoreAdminPushSync(private val context: Context) {
             val id = deviceId().trim()
             if (id.isBlank()) return@runCatching ""
 
+            val token = deviceToken().trim()
+            require(token.isNotBlank()) {
+                "Device security registration required. Re-register this phone."
+            }
+
             val response = rpc(
                 "start_scale_upload",
                 JSONObject()
                     .put("p_device_ip", deviceIp())
                     .put("p_device_id", id)
+                    .put("p_device_token", token)
                     .put("p_scale_ip", scaleIp)
                     .put("p_plu_count", pluCount)
             )
@@ -227,6 +244,11 @@ class StoreAdminPushSync(private val context: Context) {
             val id = deviceId().trim()
             if (id.isBlank()) return@runCatching 0
 
+            val token = deviceToken().trim()
+            require(token.isNotBlank()) {
+                "Device security registration required. Re-register this phone."
+            }
+
             val items = JSONArray()
             plus.forEach { plu ->
                 items.put(
@@ -243,6 +265,7 @@ class StoreAdminPushSync(private val context: Context) {
                     .put("p_session_id", sessionId)
                     .put("p_device_ip", deviceIp())
                     .put("p_device_id", id)
+                    .put("p_device_token", token)
                     .put("p_scale_ip", scaleIp)
                     .put("p_items", items)
             )
@@ -264,10 +287,18 @@ class StoreAdminPushSync(private val context: Context) {
         runCatching {
             if (sessionId.isBlank()) return@runCatching Unit
 
+            val id = deviceId().trim()
+            val token = deviceToken().trim()
+            require(id.isNotBlank() && token.isNotBlank()) {
+                "Device security registration required. Re-register this phone."
+            }
+
             rpc(
                 "fail_scale_upload",
                 JSONObject()
                     .put("p_session_id", sessionId)
+                    .put("p_device_id", id)
+                    .put("p_device_token", token)
                     .put("p_error_message", message)
             )
             Unit
