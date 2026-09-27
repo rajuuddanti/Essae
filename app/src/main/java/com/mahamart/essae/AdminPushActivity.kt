@@ -446,8 +446,9 @@ private fun AdminPushScreen(
                                     note = "Admin Push from store-price view"
                                 )
 
-                                result.onSuccess {
+                                result.onSuccess { updateId ->
                                     successCount++
+                                    auth.sendAdminPushNotification(updateId)
                                 }.onFailure {
                                     if (firstError == null) {
                                         firstError = it.message ?: "Admin Push failed."
