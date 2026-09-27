@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "138335756250",
+    "project_id": "mahamart-essae-e09e3",
+    "storage_bucket": "mahamart-essae-e09e3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:138335756250:android:da795d13328fb7b101eae3",
+        "android_client_info": {
+          "package_name": "com.mahamart.essae"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGM2mJ4AVsRpBobF8C941rzyZbJp6mm9w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
