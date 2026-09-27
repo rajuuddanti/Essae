@@ -474,11 +474,6 @@ class MainVm(
                 if (pluNumbers.isNotEmpty()) {
                     status =
                         "Admin Push synced: ${pluNumbers.size} price(s)."
-
-                    AdminPushNotification.showAdminPushReceived(
-                        appContext,
-                        pluNumbers.size
-                    )
                 }
             }.onFailure { error ->
                 status =
