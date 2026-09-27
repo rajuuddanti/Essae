@@ -153,10 +153,9 @@ class StoreAdminPushSync(private val context: Context) {
                     }
                 }
 
-                // TEMP TEST MODE:
-                // Treat an Admin Push price change as the current store
-                // price immediately, so the Admin screen can verify the
-                // store's new price before physical Essae upload.
+                // Record the Admin Push as a pending store-price audit.
+                // The confirmed store price remains the physical scale
+                // upload result recorded by complete_scale_upload().
                 rpc(
                     "log_pending_price_changes",
                     JSONObject()
