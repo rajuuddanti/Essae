@@ -25,3 +25,10 @@ A 2026-09-27 live Supabase Security Advisor snapshot is documented in `20_SUPABA
 
 ## Core rule
 Preserve the stable Essae transport and existing working behavior. Cloud/admin features must not casually rewrite the working scale protocol.
+
+
+## 2026-09-27 — Notification experiment
+
+Experimental branch: `feature/admin-push-notifications`, created from `feature/admin-device-registration`.
+
+Purpose: add a notification to registered store devices when an Admin Push is received, without changing the existing Admin Push → Store Sync → RED/PENDING → physical Essae upload lifecycle. See `21_ADMIN_PUSH_NOTIFICATIONS_BRANCH.md`.
