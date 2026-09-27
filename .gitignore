@@ -29,3 +29,5 @@ captures/
 # Generated files
 .DS_Store
 Thumbs.db
+# Firebase Android config (local)
+app/google-services.json
