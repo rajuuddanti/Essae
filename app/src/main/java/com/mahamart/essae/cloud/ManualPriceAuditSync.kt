@@ -21,6 +21,12 @@ class ManualPriceAuditSync(private val context: Context) {
         Settings.Secure.ANDROID_ID
     ) ?: ""
 
+    private fun deviceToken(): String =
+        context.getSharedPreferences(
+            "store_device_registration",
+            Context.MODE_PRIVATE
+        ).getString("device_token", "").orEmpty()
+
     fun deviceIp(): String = try {
         NetworkInterface.getNetworkInterfaces().toList()
             .asSequence()
@@ -31,6 +37,8 @@ class ManualPriceAuditSync(private val context: Context) {
 
     suspend fun pushManualChange(audit: PriceChangeAudit): Boolean = withContext(Dispatchers.IO) {
         if (baseUrl.isBlank() || publishableKey.isBlank()) return@withContext false
+        val token = deviceToken().trim()
+        if (token.isBlank()) return@withContext false
         try {
             val items = JSONArray().put(JSONObject().apply {
                 put("plu_no", audit.pluNo)
@@ -41,6 +49,7 @@ class ManualPriceAuditSync(private val context: Context) {
             val body = JSONObject().apply {
                 put("p_device_ip", audit.deviceIp)
                 put("p_device_id", audit.deviceId)
+                put("p_device_token", token)
                 put("p_scale_ip", audit.scaleIp)
                 put("p_source", "MANUAL")
                 put("p_items", items)
