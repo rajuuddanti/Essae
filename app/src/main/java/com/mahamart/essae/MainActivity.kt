@@ -1,8 +1,11 @@
 package com.mahamart.essae
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -89,6 +92,38 @@ class MainActivity : ComponentActivity() {
 
         val db = AppDatabase.create(applicationContext)
 
+        AdminPushNotification.createChannel(applicationContext)
+
+        val notificationPermissionLauncher =
+            registerForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { }
+
+        fun requestNotificationPermissionIfNeeded() {
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            }
+        }
+
+        val registrationPrefs =
+            getSharedPreferences(
+                "store_device_registration",
+                Context.MODE_PRIVATE
+            )
+
+        if (
+            registrationPrefs.getBoolean("registered", false) &&
+            registrationPrefs.getString("device_token", "").orEmpty().isNotBlank()
+        ) {
+            requestNotificationPermissionIfNeeded()
+        }
+
         setContent {
             EssaeApp(db)
         }
@@ -155,7 +190,8 @@ class MainVm(
 
     private val transport = EssaeTransport()
     private val auditSync = ManualPriceAuditSync(context.applicationContext)
-    private val adminPushSync = StoreAdminPushSync(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val adminPushSync = StoreAdminPushSync(appContext)
 
     /*
      * UI marker for the current local edit session.
@@ -432,6 +468,11 @@ class MainVm(
                 if (pluNumbers.isNotEmpty()) {
                     status =
                         "Admin Push synced: ${pluNumbers.size} price(s)."
+
+                    AdminPushNotification.showAdminPushReceived(
+                        appContext,
+                        pluNumbers.size
+                    )
                 }
             }.onFailure { error ->
                 status =
