@@ -15,9 +15,13 @@ This directory is the durable handoff for the MahaMart / Essae Android scale-man
 10. 13_DEPLOYMENT_AND_BUILD_LOG.md
 11. 14_PROJECT_CHANGELOG.md
 12. 18_MULTI_DEVICE_REGISTRATION.md
+13. 20_SUPABASE_ADVISOR_FINDINGS_2026-09-27.md
 
 ## Latest checkpoint
 For the current end-to-end behavior and the exact next testing sequence, 19_STABLE_CHECKPOINT_2026-09-26.md is authoritative.
+
+## Security Advisor checkpoint
+A 2026-09-27 live Supabase Security Advisor snapshot is documented in `20_SUPABASE_ADVISOR_FINDINGS_2026-09-27.md`. Review this before production-final security hardening.
 
 ## Core rule
 Preserve the stable Essae transport and existing working behavior. Cloud/admin features must not casually rewrite the working scale protocol.
