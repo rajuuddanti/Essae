@@ -47,12 +47,3 @@ Keep project brain under docs/project-brain/ and SQL under supabase/.
 
 ## Security
 Never commit local.properties, passwords, service-role keys, signing credentials, or other secrets.
-
-
-## 2026-09-27 — Current branch and notification work
-
-- Parent/stable development branch: `feature/admin-device-registration`.
-- Experimental notification branch: `feature/admin-push-notifications`.
-- Do not merge notification work into the parent until physical-device testing passes.
-- Notification must be additive: existing Admin Push polling, Room price update, RED/PENDING state, and physical Essae upload confirmation remain unchanged.
-- Current useful notification test target: Admin pushes one PLU (for example SUGAR LOOSE) to a registered store device; that device should receive an alert after the Admin Push is actually received.

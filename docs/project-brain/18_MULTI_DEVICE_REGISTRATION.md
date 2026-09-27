@@ -63,21 +63,3 @@ Apply:
 after the existing fresh schema and Admin Push migration.
 
 The existing `store_ip_map` and legacy RPCs are intentionally preserved for compatibility while the Android app moves to the new device registry.
-
-
-## 2026-09-27 — Device token
-
-A registered physical device now also has a secret device token. Store RPCs validate the device ID + token pair and derive the store from the authenticated device record. IP remains audit/network information only.
-
-Re-registration rotates the token. Multiple devices can still belong to one store.
-
-## Notification branch
-
-`feature/admin-push-notifications` is an isolated experiment for notifying registered store devices when they receive Admin Push.
-
-Requirements:
-- Supabase remains the source of truth.
-- Notification must not replace Admin Push polling/sync.
-- Missing a notification must not lose the update.
-- Multiple devices at the same store remain supported.
-- Do not commit Firebase service-account/private-key secrets.

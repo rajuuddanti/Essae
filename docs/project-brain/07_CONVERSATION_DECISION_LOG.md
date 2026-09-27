@@ -33,17 +33,3 @@ Important project decisions preserved from development:
 
 - Added docs/project-brain/19_STABLE_CHECKPOINT_2026-09-26.md.
 - This file is the first-read source when a future conversation needs to resume the project after a conversation limit.
-
-
-## 2026-09-27 — Device-token security validated
-
-- Existing test phone was re-registered successfully after the live pgcrypto search-path issue was corrected.
-- Live pgcrypto is installed in the `extensions` schema; token registration functions use `search_path = public, extensions`.
-- Corrected migration commit: `773e1f9bcc947c06625329d13fc5cfda2da8cbb2`.
-
-## 2026-09-27 — Admin Push notification branch
-
-- Created `feature/admin-push-notifications` from `feature/admin-device-registration`.
-- Stable parent branch remains untouched.
-- Desired notification: when a registered store device receives an Admin Push, show a notification telling the store that a new price update was received and must be uploaded to the scale.
-- Notification is only an alert. Supabase remains the source of truth; missed notifications must never lose a price update.

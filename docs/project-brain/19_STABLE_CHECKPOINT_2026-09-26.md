@@ -245,15 +245,3 @@ See:
 The visible findings include SECURITY DEFINER views, `public.profiles` RLS initialization, leaked-password protection being disabled, and PUBLIC execution of several SECURITY DEFINER admin functions.
 
 These must be reviewed before calling the project production-final. Do not blindly revoke grants or remove SECURITY DEFINER because some objects may intentionally use elevated execution and may contain their own authorization checks.
-
-
-## 2026-09-27 — Security + branch checkpoint
-
-Device-token security is now implemented. The live test phone was successfully re-registered after correcting the pgcrypto extension search path. The live extension is in schema `extensions`, so the registration/token functions use `search_path = public, extensions`.
-
-Corrected repository migration commit: `773e1f9bcc947c06625329d13fc5cfda2da8cbb2`.
-
-Current experimental branch:
-`feature/admin-push-notifications`
-
-This branch was created from `feature/admin-device-registration` specifically for Admin Push store-device notifications. Keep the parent branch untouched while testing this feature.
