@@ -33,8 +33,8 @@ create or replace function public.verify_store_device_token(
 returns uuid
 language plpgsql
 security definer
-set search_path = public
-as $$
+set search_path = public, extensions
+as $
 declare
     v_store_id uuid;
 begin
@@ -89,8 +89,8 @@ returns table(
 )
 language plpgsql
 security definer
-set search_path = public
-as $$
+set search_path = public, extensions
+as $
 declare
     v_code_id uuid;
     v_store_id uuid;
