@@ -76,7 +76,8 @@ class StoreDeviceRegistrationClient(context: Context) {
                 deviceId = row.optString("device_id"),
                 deviceName = row.optString("device_name"),
                 deviceIp = row.optString("device_ip"),
-                registeredAt = row.optString("registered_at")
+                registeredAt = row.optString("registered_at"),
+                deviceToken = row.optString("device_token")
             )
         }
     }
@@ -118,6 +119,7 @@ class StoreDeviceRegistrationClient(context: Context) {
         val deviceId: String,
         val deviceName: String,
         val deviceIp: String,
-        val registeredAt: String
+        val registeredAt: String,
+        val deviceToken: String
     )
 }
