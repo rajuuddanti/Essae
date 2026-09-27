@@ -141,3 +141,17 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - Latest SQL migration commit:
   - 6c0c2cd70992ccbc56a9262bcfe6f6c8681620b0
 - Live Supabase SQL must still be applied separately before final end-to-end validation.
+
+
+## 2026-09-27 — Device-token security rollout
+
+- Added per-device token authentication for sensitive store RPCs.
+- Existing test phone successfully re-registered after fixing the pgcrypto extension search path (`public, extensions`).
+- Corrected migration commit: `773e1f9bcc947c06625329d13fc5cfda2da8cbb2`.
+
+## 2026-09-27 — Admin Push notification branch
+
+- Created `feature/admin-push-notifications` from `feature/admin-device-registration`.
+- Notification work is isolated from the working device-token/Admin Push implementation.
+- Planned behavior: after a registered store device receives an Admin Push, show a notification such as `New Admin Price Update — A new price update was received. Please upload it to the scale.`
+- Notification is an alert only; it does not confirm physical scale upload and does not modify confirmed-price semantics.
