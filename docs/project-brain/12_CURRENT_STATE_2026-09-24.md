@@ -1,25 +1,41 @@
-# Current State — 2026-09-24
+# Current State — 2026-09-25
 
-## Android
-The corrected Admin Auth build successfully reached the Admin Dashboard on the user's physical Android device.
+## Verified Android
+The current feature branch has verified Admin authentication, Store Device Registration, Store/Device Mapping, device persistence, last-seen updates, and the existing Essae upload path.
 
-Admin flow:
-Scale Manager long press -> Admin Login -> Supabase Auth -> profiles role/active check -> Admin Dashboard.
-
-The dashboard shell confirmed:
-- MahaMart Admin
-- ADMIN
-- authentication connected successfully
-- placeholders for Admin Push, Reports, and Store/IP Mapping
+## Verified device test
+- Store: MM017 — Vidya Nagar
+- Device: sdk_gphone16k_x86_64
+- Device ID: 7bf621a9c15a33ea
+- IP: 10.0.2.15
 
 ## Supabase
-Database rebuild and Admin Push migration are in place.
+The multi-device registration migration is applied. Device registration and device-level state objects are present.
 
-Tables include:
-admin_current_prices, admin_price_change_report, admin_price_push_report, admin_price_update_targets, admin_price_updates, admin_scale_upload_report, profiles, scale_upload_sessions, store_ip_map, store_price_change_log, store_price_current, stores.
+The registration RPC conflict bug was fixed by using the explicit unique constraint `store_devices_device_id_unique`.
 
-Relevant RPCs/functions include:
-admin_publish_price_update, admin_save_store_ip_mapping, complete_scale_upload, fail_scale_upload, is_admin, log_pending_price_changes, mark_reverted_price_changes, start_scale_upload, store_get_pending_admin_price_updates, store_mark_admin_price_updates_synced.
+## Admin Push checkpoint
+A first functional Admin Push screen is now implemented on the feature branch:
+- Admin dashboard entry button.
+- PLU/SKU/item search using the local PLU master.
+- Single PLU selection.
+- New price input.
+- All active stores or selected stores.
+- Confirmation dialog.
+- Supabase `admin_publish_price_update` call.
+- Success/failure message with returned update ID.
 
-## Next implementation
-Build the real Admin Dashboard modules, starting with Admin Push, while keeping the stable Essae upload path unchanged.
+This is **implemented but not yet build/device-tested**. Do not merge to `main` yet.
+
+The Admin Push screen only creates cloud pending work. It does not directly upload to Essae.
+
+## Timezone
+Keep database timestamps as absolute `timestamptz` values. Admin/report presentation should use Asia/Kolkata / IST.
+
+## Immediate next module
+1. Build/test Admin Push on the Android device.
+2. Verify the Supabase push row and selected/all store targets.
+3. Implement device-level Store Sync using the v2 RPCs.
+4. Make RED/PENDING state persistent.
+5. Connect physical Upload All success/failure to cloud lifecycle.
+6. Reports/export and multi-device end-to-end testing.

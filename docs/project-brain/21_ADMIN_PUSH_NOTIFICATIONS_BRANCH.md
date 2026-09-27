@@ -1,63 +1,109 @@
-# Admin Push Notifications Branch
+# Admin Push Notifications — Experimental Branch
 
 ## Branch
+
 `feature/admin-push-notifications`
 
-Based on:
-`feature/admin-device-registration`
+This branch was created from `feature/admin-device-registration` on 2026-09-27.
 
-## Current implementation
+## Purpose
 
-This branch adds a **local Android system notification** when an Admin Push is actually received and applied by the registered store device.
+Add a notification to a registered store device when the device receives an Admin Push price update.
 
-Flow:
+Example:
 
+```text
+🔔 New Admin Price Update
+A new price update was received. Please upload it to the scale.
 ```
+
+## Non-negotiable architecture
+
+The notification is an alert layer only.
+
+```text
 Admin Push
-  -> Supabase
-  -> existing StoreAdminPushSync polling
-  -> Room price update
-  -> pending audit
-  -> notification
+    ↓
+Supabase — source of truth
+    ↓
+Store device receives/syncs update
+    ├── Room price changes
+    ├── RED/PENDING state
+    └── notification
+            ↓
+       Store uploads to Essae
+            ↓
+       physical confirmation
+            ↓
+       confirmed cloud price / LC updates
 ```
 
-The notification is only posted when `pullAndApply()` reports one or more newly applied PLUs, so repeated polling does not repeatedly notify for the same already-ACKed update.
+Do not use the notification as proof that the scale was updated.
+Do not replace the existing Admin Push polling/sync with notifications.
+If a notification is missed, the pending Admin Push must still be received by normal Supabase sync.
 
-Notification example:
+## Device model
 
-- Title: `New Admin Price Update`
-- Body: `A new price update was received. Please upload it to the scale.`
+Current device security remains:
 
-For multiple prices the title becomes `N New Admin Price Updates`.
+- STORE CODE = store identity.
+- DEVICE ID = physical Android device identity.
+- DEVICE TOKEN = per-device secret.
+- IP = audit/network information only.
 
-Tapping the notification opens the existing `MainActivity`.
+Multiple devices per store remain supported.
 
-## Android 13+
+## Preferred implementation direction
 
-The branch declares `POST_NOTIFICATIONS` and requests notification permission for a device that is already registered with a valid device token. Android 13+ requires runtime notification permission for normal app notifications.
+Use Firebase Cloud Messaging (FCM) as the notification transport if the Android project is suitable for Firebase integration.
 
-## Files changed
+FCM should be mapped to the registered physical device, not used as the authority for store identity.
 
-- `app/src/main/java/com/mahamart/essae/AdminPushNotification.kt`
-- `app/src/main/AndroidManifest.xml`
-- `app/src/main/java/com/mahamart/essae/MainActivity.kt`
+Do not commit Firebase service-account JSON, private keys, or other server credentials.
 
-## Important limitation
+## First test
 
-This first implementation deliberately does **not** add Firebase/FCM, Supabase Edge Functions, or any new server-side push infrastructure.
+1. Build the notification branch APK.
+2. Install it on the already registered test phone.
+3. Allow notification permission when Android requests it.
+4. From Admin, select one PLU such as SUGAR LOOSE.
+5. Push a new price to the registered store.
+6. Store device receives the Admin Push through the existing sync path.
+7. Store device displays the notification.
+8. Verify the existing RED/PENDING state still works.
+9. Verify physical Essae upload is still required.
+10. Verify Admin confirmed price changes only after successful physical upload.
 
-Therefore this notification is generated when the existing Admin Push sync runs. The current app polls Admin Push every 10 seconds while the main app process is active.
+## Stable branch protection
 
-A future FCM phase can provide true remote/background push delivery when the app is not running. It should be added without changing the existing Admin Push source-of-truth lifecycle.
+Do not modify or merge into `feature/admin-device-registration` until the notification feature has been built and physically tested.
 
-## Stable branch safety
+Never rewrite `EssaeTransport.kt` for notification work.
 
-No changes were made to:
+## Current security checkpoint
 
-- `feature/admin-device-registration`
-- Supabase schemas/functions
-- device-token security
-- Admin Push lifecycle
-- Essae transport/upload protocol
+The live `pgcrypto` extension is installed in the `extensions` schema. Device-token registration functions therefore use `search_path = public, extensions`.
 
-This branch is intended for independent notification testing before any merge.
+The live registration test succeeded after applying:
+
+```sql
+alter function public.verify_store_device_token(text, text)
+set search_path = public, extensions;
+
+alter function public.store_register_device(text, text, text, text)
+set search_path = public, extensions;
+```
+
+Corrected migration commit:
+`773e1f9bcc947c06625329d13fc5cfda2da8cbb2`.
+
+## Current status
+
+- Device-token registration: working on test phone.
+- Admin Push: existing working implementation preserved.
+- Device → Admin manual price reflection: next functional test.
+- Admin Push notification: new experimental branch, implementation not yet merged.
+
+## Resume instruction
+
+When continuing this branch, read this file first, then inspect the current Android and Supabase source on `feature/admin-push-notifications` before making changes.

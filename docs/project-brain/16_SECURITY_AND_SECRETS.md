@@ -11,3 +11,10 @@
 Admin authentication is handled by Supabase Auth. Authorization is checked through the ADMIN role and active profile state.
 
 The repository documentation describes configuration and architecture, not live passwords.
+
+
+## Supabase Security Advisor — 2026-09-27
+
+A live Supabase Dashboard Security Advisor screenshot was captured on 2026-09-27. The detailed findings are recorded in `docs/project-brain/20_SUPABASE_ADVISOR_FINDINGS_2026-09-27.md`.
+
+Visible findings include SECURITY DEFINER views, the `profiles` Auth RLS Initialization Plan finding, Leaked Password Protection Disabled, and PUBLIC execution of several SECURITY DEFINER admin functions. These are recorded as items for controlled review; they are not to be blindly "fixed" without checking definitions, RLS, grants, and application call paths.
