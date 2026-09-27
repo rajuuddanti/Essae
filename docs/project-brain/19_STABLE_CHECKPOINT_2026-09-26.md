@@ -233,3 +233,15 @@ Then inspect GitHub rather than reconstructing the project from memory.
 - confirmed-price semantics
 - Admin Push pending semantics
 - physical-upload confirmation rule
+
+
+## New security checkpoint — 2026-09-27
+
+A live Supabase Security Advisor snapshot revealed additional security-hardening findings that were not part of the 2026-09-26 checkpoint.
+
+See:
+- `docs/project-brain/20_SUPABASE_ADVISOR_FINDINGS_2026-09-27.md`
+
+The visible findings include SECURITY DEFINER views, `public.profiles` RLS initialization, leaked-password protection being disabled, and PUBLIC execution of several SECURITY DEFINER admin functions.
+
+These must be reviewed before calling the project production-final. Do not blindly revoke grants or remove SECURITY DEFINER because some objects may intentionally use elevated execution and may contain their own authorization checks.
