@@ -316,7 +316,30 @@ class MainVm(
             return
         }
 
+        val portNumber =
+            port.toIntOrNull()
+
+        if (portNumber == null) {
+            status = "CONNECTION ERROR"
+            return
+        }
+
         viewModelScope.launch {
+
+            status = "TESTING"
+
+            val connectionResult =
+                transport.testConnection(
+                    host,
+                    portNumber
+                )
+
+            if (connectionResult.isFailure) {
+                status = "CONNECTION ERROR"
+                return@launch
+            }
+
+            status = "CONNECTED"
 
             status =
                 "Preparing upload session for ${all.size} PLUs..."
@@ -340,7 +363,7 @@ class MainVm(
 
             transport.uploadSelectedDirect(
                 host,
-                port.toIntOrNull() ?: 4321,
+                portNumber,
                 all
             ) { done, total, plu ->
 
