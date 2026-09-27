@@ -61,6 +61,7 @@ private const val KEY_DEVICE_ID = "device_id"
 private const val KEY_DEVICE_NAME = "device_name"
 private const val KEY_DEVICE_IP = "device_ip"
 private const val KEY_REGISTERED_AT = "registered_at"
+private const val KEY_DEVICE_TOKEN = "device_token"
 
 @Composable
 private fun StoreDeviceRegistrationScreen(
@@ -152,6 +153,23 @@ private fun StoreDeviceRegistrationScreen(
 
             Spacer(Modifier.weight(1f))
 
+            Button(
+                onClick = {
+                    prefs.edit()
+                        .putBoolean(KEY_REGISTERED, false)
+                        .remove(KEY_DEVICE_TOKEN)
+                        .apply()
+                    registered = false
+                    code = ""
+                    status = "Enter a fresh one-time Admin registration code."
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("RE-REGISTER DEVICE")
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             OutlinedButton(
                 onClick = onBack,
                 modifier = Modifier.fillMaxWidth()
@@ -214,6 +232,7 @@ private fun StoreDeviceRegistrationScreen(
                                     .putString(KEY_DEVICE_NAME, result.deviceName)
                                     .putString(KEY_DEVICE_IP, result.deviceIp)
                                     .putString(KEY_REGISTERED_AT, result.registeredAt)
+                                    .putString(KEY_DEVICE_TOKEN, result.deviceToken)
                                     .apply()
 
                                 storeCode = result.storeCode
