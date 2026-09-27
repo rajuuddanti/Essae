@@ -446,12 +446,19 @@ private fun AdminPushScreen(
                                     note = "Admin Push from store-price view"
                                 )
 
-                                result.onSuccess { updateId ->
+                                if (result.isSuccess) {
+                                    val updateId = result.getOrThrow()
                                     successCount++
+
+                                    // Notification is an alert only. A notification
+                                    // failure must never make a successful Admin Push
+                                    // look like a failed price publish.
                                     auth.sendAdminPushNotification(updateId)
-                                }.onFailure {
+                                } else {
                                     if (firstError == null) {
-                                        firstError = it.message ?: "Admin Push failed."
+                                        firstError =
+                                            result.exceptionOrNull()?.message
+                                                ?: "Admin Push failed."
                                     }
                                 }
                             }
