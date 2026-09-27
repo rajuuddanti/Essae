@@ -3,6 +3,7 @@ package com.mahamart.essae
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
+import com.google.firebase.messaging.FirebaseMessaging
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -241,6 +242,11 @@ private fun StoreDeviceRegistrationScreen(
                                 registered = true
                                 registering = false
                                 status = "Device registered successfully."
+                                FirebaseMessaging.getInstance().token
+                                    .addOnSuccessListener { token ->
+                                        com.mahamart.essae.cloud.FcmTokenRegistrar(context)
+                                            .register(token)
+                                    }
                             }
                             .onFailure {
                                 registering = false
