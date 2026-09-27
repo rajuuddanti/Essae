@@ -150,7 +150,6 @@ Deno.serve(async (req) => {
               priority: "HIGH",
               notification: {
                 channel_id: "admin_price_updates",
-                click_action: "OPEN_MAIN",
               },
             },
           },
