@@ -581,11 +581,18 @@ begin
         s.store_code,
         s.store_name,
         coalesce(m.master_price, s.scale_price) as current_price,
-        coalesce(m.updated_at, s.scale_last_uploaded_at) as last_uploaded_at,
+        s.scale_last_uploaded_at as last_uploaded_at,
         s.device_ip,
         coalesce(pb.pending_pushed_at, lp.pending_pushed_at),
         coalesce(pb.pending_pushed_price, lp.pending_pushed_price),
-        coalesce(m.source, 'PHYSICAL_UPLOAD'),
+        (select l.source
+         from public.store_price_change_log l
+         where l.device_ip = s.device_ip
+           and l.plu_no = p_plu_no
+           and l.status = 'UPLOADED'
+           and l.new_price = s.scale_price
+         order by l.uploaded_at desc nulls last, l.changed_at desc
+         limit 1),
         s.scale_price,
         s.scale_last_uploaded_at
     from ranked_scale s
