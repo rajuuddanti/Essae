@@ -220,6 +220,78 @@ class SupabaseAuth(context: Context) {
             }
         }
 
+    suspend fun getOperationsSnapshot(): Result<List<StoreOperations>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = accessToken ?: error("Admin session expired. Sign in again.")
+
+                val stores = getActiveStores().getOrThrow()
+                val devices = getRegisteredStoreDevices().getOrThrow()
+
+                val pendingUrl =
+                    "$baseUrl/rest/v1/admin_price_change_report" +
+                        "?select=store_code,changed_at" +
+                        "&status=eq.PENDING" +
+                        "&order=changed_at.desc"
+                val pendingConnection = open(pendingUrl, "GET", token)
+                val pendingResponse = readResponse(pendingConnection)
+                if (pendingConnection.responseCode !in 200..299) {
+                    error(extractError(pendingResponse, "Could not load pending price changes."))
+                }
+
+                val pendingRows = JSONArray(pendingResponse)
+                val pendingByStore = mutableMapOf<String, Int>()
+                for (i in 0 until pendingRows.length()) {
+                    val row = pendingRows.getJSONObject(i)
+                    val code = row.optString("store_code")
+                    if (code.isNotBlank()) {
+                        pendingByStore[code] = (pendingByStore[code] ?: 0) + 1
+                    }
+                }
+
+                val uploadUrl =
+                    "$baseUrl/rest/v1/admin_scale_upload_report" +
+                        "?select=store_code,started_at,completed_at,status" +
+                        "&order=started_at.desc" +
+                        "&limit=500"
+                val uploadConnection = open(uploadUrl, "GET", token)
+                val uploadResponse = readResponse(uploadConnection)
+                if (uploadConnection.responseCode !in 200..299) {
+                    error(extractError(uploadResponse, "Could not load upload history."))
+                }
+
+                val uploadRows = JSONArray(uploadResponse)
+                val latestUploadByStore = mutableMapOf<String, String>()
+                for (i in 0 until uploadRows.length()) {
+                    val row = uploadRows.getJSONObject(i)
+                    val code = row.optString("store_code")
+                    val status = row.optString("status")
+                    val completed = row.optString("completed_at").ifBlank { null }
+                    if (code.isNotBlank() && status == "COMPLETED" && completed != null) {
+                        latestUploadByStore.putIfAbsent(code, completed)
+                    }
+                }
+
+                stores.map { store ->
+                    val storeDevices = devices.filter { it.storeCode == store.code }
+                    val activeDeviceCount = storeDevices.count { it.active }
+                    val latestSeen = storeDevices
+                        .mapNotNull { it.lastSeenAt }
+                        .maxByOrNull { it }
+
+                    StoreOperations(
+                        storeCode = store.code,
+                        storeName = store.name,
+                        activeDeviceCount = activeDeviceCount,
+                        deviceCount = storeDevices.size,
+                        lastSeenAt = latestSeen,
+                        pendingCount = pendingByStore[store.code] ?: 0,
+                        lastUploadAt = latestUploadByStore[store.code]
+                    )
+                }
+            }
+        }
+
     suspend fun getRegisteredStoreDevices(): Result<List<StoreDevice>> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -388,6 +460,16 @@ class SupabaseAuth(context: Context) {
         val pluNo: Int,
         val pluName: String,
         val newPrice: Double
+    )
+
+    data class StoreOperations(
+        val storeCode: String,
+        val storeName: String,
+        val activeDeviceCount: Int,
+        val deviceCount: Int,
+        val lastSeenAt: String?,
+        val pendingCount: Int,
+        val lastUploadAt: String?
     )
 
     data class StoreDevice(
