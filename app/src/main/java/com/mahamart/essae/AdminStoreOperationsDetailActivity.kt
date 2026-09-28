@@ -50,6 +50,7 @@ private fun AdminStoreOperationsDetailScreen(
     var storeName by rememberSaveable { mutableStateOf("") }
     var loading by rememberSaveable { mutableStateOf(true) }
     var error by rememberSaveable { mutableStateOf("") }
+    var selectedHistoryTab by rememberSaveable { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
@@ -129,31 +130,73 @@ private fun AdminStoreOperationsDetailScreen(
                     items(d.pendingChanges) { row -> PriceChangeCard(row) }
                 }
 
-                item { SectionTitle("RECENT PRICE CHANGES") }
-                if (d.recentChanges.isEmpty()) {
-                    item { EmptyText("No price-change history.") }
-                } else {
-                    items(d.recentChanges.take(30)) { row -> PriceChangeCard(row) }
+                item {
+                    StoreHistoryTabs(
+                        selectedTab = selectedHistoryTab,
+                        onTabSelected = { selectedHistoryTab = it }
+                    )
                 }
 
-                item { SectionTitle("UPLOAD HISTORY") }
-                if (d.uploads.isEmpty()) {
-                    item { EmptyText("No scale-upload history.") }
-                } else {
-                    items(d.uploads) { row -> UploadCard(row) }
-                }
-
-                item { SectionTitle("ADMIN PUSH HISTORY") }
-                if (d.pushes.isEmpty()) {
-                    item { EmptyText("No Admin Push history.") }
-                } else {
-                    items(d.pushes) { row -> PushCard(row) }
+                when (selectedHistoryTab) {
+                    0 -> {
+                        if (d.recentChanges.isEmpty()) {
+                            item { EmptyText("No price-change history.") }
+                        } else {
+                            items(d.recentChanges.take(30)) { row -> PriceChangeCard(row) }
+                        }
+                    }
+                    1 -> {
+                        if (d.uploads.isEmpty()) {
+                            item { EmptyText("No scale-upload history.") }
+                        } else {
+                            items(d.uploads) { row -> UploadCard(row) }
+                        }
+                    }
+                    else -> {
+                        if (d.pushes.isEmpty()) {
+                            item { EmptyText("No Admin Push history.") }
+                        } else {
+                            items(d.pushes) { row -> PushCard(row) }
+                        }
+                    }
                 }
             }
         }
 
         OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
             Text("CLOSE")
+        }
+    }
+}
+
+@Composable
+private fun StoreHistoryTabs(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    val tabs = listOf(
+        "RECENT PRICE CHANGES",
+        "UPLOAD HISTORY",
+        "ADMIN PUSH HISTORY"
+    )
+
+    ScrollableTabRow(
+        selectedTabIndex = selectedTab,
+        edgePadding = 0.dp
+    ) {
+        tabs.forEachIndexed { index, title ->
+            Tab(
+                selected = selectedTab == index,
+                onClick = { onTabSelected(index) },
+                text = {
+                    Text(
+                        title,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+            )
         }
     }
 }
