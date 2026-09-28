@@ -380,24 +380,19 @@ class SupabaseAuth(context: Context) {
                 }
 
                 val pendingPushRows = JSONArray(pendingPushResponse)
-                val pendingPushPluByStore = mutableMapOf<String, MutableSet<Int>>()
+                // Store overview counts pending Admin Push updates, not unique PLUs.
+                // Example: 44 pushed updates for 5 PLUs = 44 PENDING here.
+                val pendingByStore = pendingPluByStore
+                    .mapValues { it.value.size }
+                    .toMutableMap()
+
                 for (i in 0 until pendingPushRows.length()) {
                     val row = pendingPushRows.getJSONObject(i)
                     val code = row.optString("store_code")
                     if (code.isBlank()) continue
-
-                    val pluSet = pendingPushPluByStore.getOrPut(code) { mutableSetOf() }
-                    parsePricePushItems(row.optJSONArray("items"))
-                        .forEach { item -> pluSet.add(item.pluNo) }
+                    pendingByStore[code] =
+                        (pendingByStore[code] ?: 0) + row.optInt("item_count", 0)
                 }
-
-                pendingPushPluByStore.forEach { (code, pluNos) ->
-                    pendingPluByStore
-                        .getOrPut(code) { mutableSetOf() }
-                        .addAll(pluNos)
-                }
-
-                val pendingByStore = pendingPluByStore.mapValues { it.value.size }.toMutableMap()
 
                 val uploadUrl =
                     "$baseUrl/rest/v1/admin_scale_upload_report" +
