@@ -225,6 +225,8 @@ class SupabaseAuth(context: Context) {
             runCatching {
                 val token = accessToken ?: error("Admin session expired. Sign in again.")
                 val encoded = java.net.URLEncoder.encode(storeCode.trim(), Charsets.UTF_8.name())
+                val store = getActiveStores().getOrThrow().firstOrNull { it.code == storeCode.trim() }
+                val resolvedStoreName = store?.name.orEmpty()
 
                 fun getRows(path: String): JSONArray {
                     val connection = open("$baseUrl/rest/v1/$path", "GET", token)
@@ -299,6 +301,7 @@ class SupabaseAuth(context: Context) {
 
                 StoreOperationsDetail(
                     storeCode = storeCode,
+                    storeName = resolvedStoreName,
                     pendingChanges = changeRows.filter { it.status == "PENDING" },
                     recentChanges = changeRows,
                     uploads = uploadRows,
@@ -551,6 +554,7 @@ class SupabaseAuth(context: Context) {
 
     data class StoreOperationsDetail(
         val storeCode: String,
+        val storeName: String,
         val pendingChanges: List<PriceChangeRow>,
         val recentChanges: List<PriceChangeRow>,
         val uploads: List<ScaleUploadRow>,
