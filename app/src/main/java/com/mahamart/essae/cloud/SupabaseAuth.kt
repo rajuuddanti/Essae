@@ -220,6 +220,93 @@ class SupabaseAuth(context: Context) {
             }
         }
 
+    suspend fun getStoreOperationsDetail(storeCode: String): Result<StoreOperationsDetail> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val token = accessToken ?: error("Admin session expired. Sign in again.")
+                val encoded = java.net.URLEncoder.encode(storeCode.trim(), Charsets.UTF_8.name())
+
+                fun getRows(path: String): JSONArray {
+                    val connection = open("$baseUrl/rest/v1/$path", "GET", token)
+                    val response = readResponse(connection)
+                    if (connection.responseCode !in 200..299) {
+                        error(extractError(response, "Could not load store operations."))
+                    }
+                    return JSONArray(response)
+                }
+
+                val changes = getRows(
+                    "admin_price_change_report?select=plu_no,plu_name,old_price,new_price,status,source,changed_at,uploaded_at&store_code=eq.$encoded&order=changed_at.desc&limit=100"
+                )
+                val changeRows = buildList {
+                    for (i in 0 until changes.length()) {
+                        val row = changes.getJSONObject(i)
+                        add(
+                            PriceChangeRow(
+                                pluNo = row.optInt("plu_no", 0),
+                                pluName = row.optString("plu_name"),
+                                oldPrice = row.optDouble("old_price", 0.0),
+                                newPrice = row.optDouble("new_price", 0.0),
+                                status = row.optString("status"),
+                                source = row.optString("source"),
+                                changedAt = row.optString("changed_at").ifBlank { null },
+                                uploadedAt = row.optString("uploaded_at").ifBlank { null }
+                            )
+                        )
+                    }
+                }
+
+                val uploads = getRows(
+                    "admin_scale_upload_report?select=device_id,scale_ip,started_at,completed_at,status,plu_count,error_message&store_code=eq.$encoded&order=started_at.desc&limit=50"
+                )
+                val uploadRows = buildList {
+                    for (i in 0 until uploads.length()) {
+                        val row = uploads.getJSONObject(i)
+                        add(
+                            ScaleUploadRow(
+                                deviceId = row.optString("device_id"),
+                                scaleIp = row.optString("scale_ip"),
+                                startedAt = row.optString("started_at").ifBlank { null },
+                                completedAt = row.optString("completed_at").ifBlank { null },
+                                status = row.optString("status"),
+                                pluCount = row.optInt("plu_count", 0),
+                                errorMessage = row.optString("error_message").ifBlank { null }
+                            )
+                        )
+                    }
+                }
+
+                val pushes = getRows(
+                    "admin_price_push_report?select=update_id,created_at,created_by_name,mode,item_count,status,synced_at,uploaded_at&store_code=eq.$encoded&order=created_at.desc&limit=50"
+                )
+                val pushRows = buildList {
+                    for (i in 0 until pushes.length()) {
+                        val row = pushes.getJSONObject(i)
+                        add(
+                            PricePushRow(
+                                updateId = row.optString("update_id"),
+                                createdAt = row.optString("created_at").ifBlank { null },
+                                createdByName = row.optString("created_by_name"),
+                                mode = row.optString("mode"),
+                                itemCount = row.optInt("item_count", 0),
+                                status = row.optString("status"),
+                                syncedAt = row.optString("synced_at").ifBlank { null },
+                                uploadedAt = row.optString("uploaded_at").ifBlank { null }
+                            )
+                        )
+                    }
+                }
+
+                StoreOperationsDetail(
+                    storeCode = storeCode,
+                    pendingChanges = changeRows.filter { it.status == "PENDING" },
+                    recentChanges = changeRows,
+                    uploads = uploadRows,
+                    pushes = pushRows
+                )
+            }
+        }
+
     suspend fun getOperationsSnapshot(): Result<List<StoreOperations>> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -460,6 +547,46 @@ class SupabaseAuth(context: Context) {
         val pluNo: Int,
         val pluName: String,
         val newPrice: Double
+    )
+
+    data class StoreOperationsDetail(
+        val storeCode: String,
+        val pendingChanges: List<PriceChangeRow>,
+        val recentChanges: List<PriceChangeRow>,
+        val uploads: List<ScaleUploadRow>,
+        val pushes: List<PricePushRow>
+    )
+
+    data class PriceChangeRow(
+        val pluNo: Int,
+        val pluName: String,
+        val oldPrice: Double,
+        val newPrice: Double,
+        val status: String,
+        val source: String,
+        val changedAt: String?,
+        val uploadedAt: String?
+    )
+
+    data class ScaleUploadRow(
+        val deviceId: String,
+        val scaleIp: String,
+        val startedAt: String?,
+        val completedAt: String?,
+        val status: String,
+        val pluCount: Int,
+        val errorMessage: String?
+    )
+
+    data class PricePushRow(
+        val updateId: String,
+        val createdAt: String?,
+        val createdByName: String,
+        val mode: String,
+        val itemCount: Int,
+        val status: String,
+        val syncedAt: String?,
+        val uploadedAt: String?
     )
 
     data class StoreOperations(
