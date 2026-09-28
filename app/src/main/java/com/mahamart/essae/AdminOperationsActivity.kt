@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -57,6 +58,7 @@ private fun AdminOperationsScreen(
     var loading by rememberSaveable { mutableStateOf(true) }
     var error by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     suspend fun refresh() {
         loading = true
@@ -152,7 +154,7 @@ private fun AdminOperationsScreen(
                 items(rows, key = { it.storeCode }) { row ->
                     StoreOperationsCard(row) {
                         startActivity(
-                            Intent(this@AdminOperationsActivity, AdminStoreOperationsDetailActivity::class.java)
+                            Intent(context, AdminStoreOperationsDetailActivity::class.java)
                                 .putExtra(
                                     AdminStoreOperationsDetailActivity.EXTRA_STORE_CODE,
                                     row.storeCode
