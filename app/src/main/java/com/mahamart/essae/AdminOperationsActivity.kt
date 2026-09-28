@@ -20,6 +20,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +55,7 @@ private fun AdminOperationsScreen(
     var rows by remember { mutableStateOf<List<SupabaseAuth.StoreOperations>>(emptyList()) }
     var loading by rememberSaveable { mutableStateOf(true) }
     var error by rememberSaveable { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
         loading = true
@@ -97,10 +100,7 @@ private fun AdminOperationsScreen(
                 )
             }
             OutlinedButton(
-                onClick = {
-                    androidx.lifecycle.compose.collectAsStateWithLifecycle
-                    // Refresh is launched from the composition-safe coroutine scope below.
-                }
+                onClick = { scope.launch { refresh() } }
             ) {
                 Text("REFRESH")
             }
