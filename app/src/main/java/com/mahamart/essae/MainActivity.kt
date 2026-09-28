@@ -258,6 +258,20 @@ class MainVm(
 
         viewModelScope.launch {
 
+            status = "SYNCING CSV PRICES TO ADMIN..."
+
+            val masterResult =
+                adminPushSync.applyCsvMasterPrices(imported)
+
+            if (masterResult.isFailure) {
+                status =
+                    "CSV import blocked: ${
+                        masterResult.exceptionOrNull()?.message
+                            ?: "Admin price sync failed"
+                    }"
+                return@launch
+            }
+
             val before =
                 plus.value.associateBy { it.number }
 
@@ -274,20 +288,20 @@ class MainVm(
                 }
 
             dao.upsertAll(imported)
+            auditDao.deletePendingForPluNumbers(
+                imported.map { it.number }
+            )
 
-            /*
-             * A newly imported CSV starts a fresh
-             * visual editing session.
-             */
             changedPluNumbers = emptySet()
 
             csvStatus =
                 "CSV loaded: ${imported.size} PLUs | " +
                         "New: $newPluCount | " +
-                        "Price changes: $priceChanges"
+                        "Price changes: $priceChanges | " +
+                        "Store Master updated"
 
             status =
-                "Ready for direct scale upload"
+                "Store Master updated — ready for scale upload"
         }
     }
 
@@ -631,6 +645,26 @@ fun EssaeApp(db: AppDatabase) {
         mutableStateOf(false)
     }
 
+    var showImportCsvDialog by
+    rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var importCsvPin by
+    rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var importCsvPinError by
+    rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var pendingCsvText by
+    rememberSaveable {
+        mutableStateOf("")
+    }
+
     var deviceRegistered by rememberSaveable {
         mutableStateOf(false)
     }
@@ -703,7 +737,12 @@ fun EssaeApp(db: AppDatabase) {
                         )
 
                 }
-                    .onSuccess(vm::importCsv)
+                    .onSuccess {
+                        pendingCsvText = it
+                        importCsvPin = ""
+                        importCsvPinError = false
+                        showImportCsvDialog = true
+                    }
                     .onFailure {
                         vm.updateStatus(
                             "CSV import failed: ${it.message}"
@@ -1346,6 +1385,85 @@ fun EssaeApp(db: AppDatabase) {
                 }
             }
         }
+    }
+
+    if (showImportCsvDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showImportCsvDialog = false
+                importCsvPin = ""
+                importCsvPinError = false
+                pendingCsvText = ""
+            },
+            title = {
+                Text("Authorize CSV Master Price Update")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "This CSV will replace/update the Store Master Price for its SKUs and immediately sync those prices to Admin. Physical scale upload can be done afterward."
+                    )
+
+                    OutlinedTextField(
+                        value = importCsvPin,
+                        onValueChange = {
+                            if (it.length <= 4 && it.all { char -> char.isDigit() }) {
+                                importCsvPin = it
+                                importCsvPinError = false
+                            }
+                        },
+                        label = { Text("Enter PIN") },
+                        placeholder = { Text("4-digit PIN") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.NumberPassword
+                        ),
+                        isError = importCsvPinError
+                    )
+
+                    if (importCsvPinError) {
+                        Text(
+                            "Incorrect PIN. CSV was not imported.",
+                            color = Color(0xFFD00019),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    colors = mahaMartButtonColors(),
+                    onClick = {
+                        if (importCsvPin == CLEAR_PLU_PIN) {
+                            val csv = pendingCsvText
+                            showImportCsvDialog = false
+                            importCsvPin = ""
+                            importCsvPinError = false
+                            pendingCsvText = ""
+                            vm.importCsv(csv)
+                        } else {
+                            importCsvPinError = true
+                        }
+                    }
+                ) {
+                    Text("IMPORT & UPDATE ADMIN")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showImportCsvDialog = false
+                        importCsvPin = ""
+                        importCsvPinError = false
+                        pendingCsvText = ""
+                    }
+                ) {
+                    Text("CANCEL")
+                }
+            }
+        )
     }
 
     if (showClearPluDialog) {
