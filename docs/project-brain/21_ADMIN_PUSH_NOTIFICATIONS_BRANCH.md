@@ -2,7 +2,7 @@
 
 ## Branch
 
-`feature/admin-push-notifications`
+`ChatGPT-sugegstions` (experimental fork of `feature/admin-push-notifications`)
 
 This branch was created from `feature/admin-device-registration` on 2026-09-27.
 
@@ -164,6 +164,36 @@ The stable `main` branch and `feature/admin-device-registration` branch are not 
 12. With scale connected, tap Main → UPLOAD ALL and verify the existing bulk upload proceeds.
 13. Verify physical Essae upload is still required.
 14. Verify confirmed cloud price / LC changes only after successful physical upload.
+
+
+## ChatGPT Suggestions experiment
+
+The experimental branch `ChatGPT-sugegstions` is being used for optional operational improvements without touching the stable branches.
+
+### Store Operations dashboard
+
+Added an Admin-only **STORE OPERATIONS** screen.
+
+It intentionally uses the existing database objects; **no new table is required**.
+
+The screen combines:
+- active store master
+- registered store devices / last-seen information
+- pending price-change rows
+- latest completed scale-upload rows
+
+It shows, per store:
+- registered/active device count
+- last seen timestamp
+- pending price-change count
+- latest completed physical upload timestamp
+
+The data is read through the existing Admin views:
+- `admin_store_devices`
+- `admin_price_change_report`
+- `admin_scale_upload_report`
+
+The feature does not change the price state machine, Essae protocol, Admin Push behavior, FCM behavior, or confirmed-price rules.
 
 ## Stable architecture rules
 
