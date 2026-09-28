@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/admin-push-notifications
+      - ChatGPT-sugegstions
   workflow_dispatch:
 
 jobs:
