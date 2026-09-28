@@ -153,7 +153,7 @@ private fun AdminOperationsScreen(
             ) {
                 items(rows, key = { it.storeCode }) { row ->
                     StoreOperationsCard(row) {
-                        startActivity(
+                        context.startActivity(
                             Intent(context, AdminStoreOperationsDetailActivity::class.java)
                                 .putExtra(
                                     AdminStoreOperationsDetailActivity.EXTRA_STORE_CODE,
