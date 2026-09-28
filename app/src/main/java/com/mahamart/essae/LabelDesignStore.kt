@@ -81,7 +81,12 @@ object LabelDesignStore {
 
     fun read(context: Context, slot: Slot): ByteArray {
         ensureBundled(context)
-        return File(dir(context), slot.localFile).readBytes()
+        val savedText = getLabelText(context)
+        val content = File(dir(context), slot.localFile).readText(Charsets.UTF_8)
+        val updated = content
+            .replace("MAHALAXMI MAHA MART", savedText)
+            .replace("MAHALAXMI MAHAMART", savedText)
+        return updated.toByteArray(Charsets.UTF_8)
     }
 
     fun importInto(context: Context, slot: Slot, uri: Uri) {
