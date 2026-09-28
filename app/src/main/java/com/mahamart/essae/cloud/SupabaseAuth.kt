@@ -252,7 +252,7 @@ class SupabaseAuth(context: Context) {
                                 status = row.optString("status"),
                                 source = row.optString("source"),
                                 changedAt = row.optString("changed_at").ifBlank { null },
-                                uploadedAt = row.optString("uploaded_at").ifBlank { null }
+                                uploadedAt = if (row.isNull("uploaded_at")) null else row.optString("uploaded_at").ifBlank { null }
                             )
                         )
                     }
@@ -294,7 +294,7 @@ class SupabaseAuth(context: Context) {
                                 items = parsePricePushItems(row.optJSONArray("items")),
                                 status = row.optString("status"),
                                 syncedAt = row.optString("synced_at").ifBlank { null },
-                                uploadedAt = row.optString("uploaded_at").ifBlank { null }
+                                uploadedAt = if (row.isNull("uploaded_at")) null else row.optString("uploaded_at").ifBlank { null }
                             )
                         )
                     }
