@@ -331,7 +331,26 @@ begin
             coalesce(item->>'plu_name', ''),
             (item->>'unit_price')::numeric,
             now(),
-            'ADMIN_PUSH',
+            coalesce(
+                (
+                    select l.source
+                    from public.store_price_change_log l
+                    where l.device_ip = p_device_ip
+                      and l.plu_no = (item->>'plu_no')::integer
+                      and l.status = 'PENDING'
+                      and l.new_price = (item->>'unit_price')::numeric
+                    order by l.changed_at desc
+                    limit 1
+                ),
+                (
+                    select m.source
+                    from public.store_price_master m
+                    where m.store_id = v_store_id
+                      and m.plu_no = (item->>'plu_no')::integer
+                      and m.master_price = (item->>'unit_price')::numeric
+                ),
+                'ADMIN_PUSH'
+            ),
             p_device_ip,
             trim(p_device_id)
         )
