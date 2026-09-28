@@ -205,6 +205,55 @@ class StoreAdminPushSync(private val context: Context) {
         }
     }
 
+    suspend fun applyCsvMasterPrices(
+        plus: List<Plu>
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        runCatching {
+            require(baseUrl.isNotBlank()) { "Supabase URL is missing." }
+            require(publishableKey.isNotBlank()) {
+                "Supabase publishable key is missing."
+            }
+
+            if (!registrationPrefs.getBoolean("registered", false)) {
+                error("Device registration is required before CSV price sync.")
+            }
+
+            val id = deviceId().trim()
+            require(id.isNotBlank()) { "Device ID is missing." }
+
+            val token = deviceToken().trim()
+            require(token.isNotBlank()) {
+                "Device security registration required. Re-register this phone."
+            }
+
+            val items = JSONArray()
+            plus.forEach { plu ->
+                items.put(
+                    JSONObject()
+                        .put("plu_no", plu.number)
+                        .put("plu_name", plu.name)
+                        .put("unit_price", plu.unitPrice)
+                )
+            }
+
+            val response = rpc(
+                "store_apply_csv_master_prices",
+                JSONObject()
+                    .put("p_device_id", id)
+                    .put("p_device_token", token)
+                    .put("p_device_ip", deviceIp())
+                    .put("p_items", items)
+            )
+
+            val value = JSONTokener(response.ifBlank { "0" }).nextValue()
+            when (value) {
+                is Number -> value.toInt()
+                is String -> value.toIntOrNull() ?: 0
+                else -> 0
+            }
+        }
+    }
+
     suspend fun startScaleUpload(
         pluCount: Int,
         scaleIp: String
