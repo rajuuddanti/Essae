@@ -116,9 +116,10 @@ private fun AdminStoreOperationsDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item { SectionTitle("PENDING PRICES") }
-                if (d.pendingChanges.isEmpty()) {
+                if (d.pendingAdminPushes.isEmpty() && d.pendingChanges.isEmpty()) {
                     item { EmptyText("No pending price changes.") }
                 } else {
+                    items(d.pendingAdminPushes) { row -> PendingAdminPushCard(row) }
                     items(d.pendingChanges) { row -> PriceChangeCard(row) }
                 }
 
@@ -192,7 +193,10 @@ private fun PriceChangeCard(row: SupabaseAuth.PriceChangeRow) {
             )
             Text("Changed: " + formatIst(row.changedAt), style = MaterialTheme.typography.bodySmall)
             if (row.uploadedAt != null) {
-                Text("Uploaded: " + formatIst(row.uploadedAt), style = MaterialTheme.typography.bodySmall)
+                Text(
+                "Uploaded: " + (row.uploadedAt?.let { formatIst(it) } ?: "Not uploaded"),
+                style = MaterialTheme.typography.bodySmall
+            )
             }
         }
     }
@@ -233,7 +237,12 @@ private fun PushCard(row: SupabaseAuth.PricePushRow) {
         ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    row.itemCount.toString() + " PLUs • " + row.mode,
+                    when {
+                        row.items.size == 1 -> "1 PLU • " + row.items.first().pluName
+                        row.items.isNotEmpty() -> row.items.size.toString() + " PLUs • " +
+                            row.items.first().pluName
+                        else -> row.itemCount.toString() + " PLUs • " + row.mode
+                    },
                     modifier = Modifier.weight(1f),
                     fontWeight = FontWeight.SemiBold
                 )
@@ -243,6 +252,43 @@ private fun PushCard(row: SupabaseAuth.PricePushRow) {
             Text("Created: " + formatIst(row.createdAt), style = MaterialTheme.typography.bodySmall)
             Text("Synced: " + formatIst(row.syncedAt), style = MaterialTheme.typography.bodySmall)
             Text("Uploaded: " + formatIst(row.uploadedAt), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun PendingAdminPushCard(row: SupabaseAuth.PendingAdminPushItem) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    row.pluNo.toString() + "  " + row.pluName,
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "PENDING",
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
+                )
+            }
+            Text(
+                "Admin Push • ₹" + String.format("%.2f", row.newPrice),
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "Pushed: " + formatIst(row.pushedAt),
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                "Waiting for scale upload",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
