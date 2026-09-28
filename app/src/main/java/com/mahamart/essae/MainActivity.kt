@@ -661,7 +661,7 @@ fun EssaeApp(db: AppDatabase) {
     }
 
     var pendingCsvText by
-    rememberSaveable {
+    remember {
         mutableStateOf("")
     }
 
