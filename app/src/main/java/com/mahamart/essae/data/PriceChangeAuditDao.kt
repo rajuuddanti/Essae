@@ -23,6 +23,9 @@ interface PriceChangeAuditDao {
     @Query("UPDATE price_change_audit SET status = 'UPLOADED', uploadedAt = :uploadedAt WHERE status = 'PENDING'")
     suspend fun markAllPendingUploaded(uploadedAt: Long = System.currentTimeMillis())
 
+    @Query("DELETE FROM price_change_audit WHERE status = 'PENDING' AND pluNo IN (:pluNumbers)")
+    suspend fun deletePendingForPluNumbers(pluNumbers: List<Int>)
+
     @Query("UPDATE price_change_audit SET cloudSynced = 1 WHERE id IN (:ids)")
     suspend fun markCloudSynced(ids: List<Long>)
 
