@@ -1,6 +1,6 @@
 # MahaMart Scale Manager — Project Handoff / Resume Pack
 
-**Document date:** 2026-09-25  
+**Document date:** 2026-09-28  
 **Purpose:** Single source of truth for resuming MahaMart Scale Manager in a new conversation without re-explaining the project.
 
 ## 1. Project identity
@@ -228,3 +228,11 @@ Then build/run again from Android Studio or USB device.
 7. Build Reports.
 8. Test restart/failure/success and multiple devices.
 9. Only then merge to main.
+
+## 19. Current Label Design checkpoint — 2026-09-28
+- Label Design has two slots: Weight Only and Weight + ₹ Price.
+- Store name can be edited from the Label Design top-right action.
+- Runtime LFT copies live under `/data/data/com.mahamart.essae/files/label_designs/`.
+- Android Studio Device Explorer confirmed both generated LFTs are readable Essae-Teraoka Label Design Format text and the store-name field changes in the generated copies.
+- Original templates under `app/src/main/assets/` remain unchanged.
+- See `24_LABEL_DESIGN_STORE_NAME_2026-09-28.md` for the test checkpoint.
