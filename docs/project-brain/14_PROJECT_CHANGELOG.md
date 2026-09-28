@@ -141,3 +141,14 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - Latest SQL migration commit:
   - 6c0c2cd70992ccbc56a9262bcfe6f6c8681620b0
 - Live Supabase SQL must still be applied separately before final end-to-end validation.
+
+
+## 2026-09-28 — Label Design store-name editor and LFT validation
+
+- Added a Label Design store-name editor for both label slots.
+- Saved label text is applied to the runtime copies of Weight Only and Weight + ₹ Price before upload.
+- Original bundled assets remain unchanged.
+- Fixed the Label Design TopAppBar syntax error caused by the missing comma after `navigationIcon`.
+- Android Studio Device Explorer validation confirmed the runtime LFT files under `/data/data/com.mahamart.essae/files/label_designs/` are readable Essae-Teraoka Label Design Format text and show the changed store-name field.
+- Added durable checkpoint: `24_LABEL_DESIGN_STORE_NAME_2026-09-28.md`.
+- Current development branch: `ChatGPT-sugegstions`.
