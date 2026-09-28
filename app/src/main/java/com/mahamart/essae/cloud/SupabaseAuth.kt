@@ -343,7 +343,7 @@ class SupabaseAuth(context: Context) {
 
                 val pendingUrl =
                     "$baseUrl/rest/v1/admin_price_change_report" +
-                        "?select=store_code,changed_at" +
+                        "?select=store_code,plu_no,changed_at" +
                         "&status=eq.PENDING" +
                         "&order=changed_at.desc"
                 val pendingConnection = open(pendingUrl, "GET", token)
@@ -353,12 +353,15 @@ class SupabaseAuth(context: Context) {
                 }
 
                 val pendingRows = JSONArray(pendingResponse)
-                val pendingByStore = mutableMapOf<String, Int>()
+                val pendingPluByStore = mutableMapOf<String, MutableSet<Int>>()
                 for (i in 0 until pendingRows.length()) {
                     val row = pendingRows.getJSONObject(i)
                     val code = row.optString("store_code")
-                    if (code.isNotBlank()) {
-                        pendingByStore[code] = (pendingByStore[code] ?: 0) + 1
+                    if (code.isBlank()) continue
+
+                    val pluNo = row.optInt("plu_no", 0)
+                    if (pluNo > 0) {
+                        pendingPluByStore.getOrPut(code) { mutableSetOf() }.add(pluNo)
                     }
                 }
 
@@ -389,9 +392,12 @@ class SupabaseAuth(context: Context) {
                 }
 
                 pendingPushPluByStore.forEach { (code, pluNos) ->
-                    pendingByStore[code] =
-                        (pendingByStore[code] ?: 0) + pluNos.size
+                    pendingPluByStore
+                        .getOrPut(code) { mutableSetOf() }
+                        .addAll(pluNos)
                 }
+
+                val pendingByStore = pendingPluByStore.mapValues { it.value.size }.toMutableMap()
 
                 val uploadUrl =
                     "$baseUrl/rest/v1/admin_scale_upload_report" +
