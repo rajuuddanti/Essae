@@ -135,12 +135,9 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           message: {
             token: device.fcm_token,
-            notification: {
-              title: "New Admin Price Update",
-              body: update.item_count === 1
-                ? "A new price update was received. Please upload it to the scale."
-                : update.item_count + " new price updates were received. Please review and upload them to the scale.",
-            },
+            // Send a high-priority data message so our FirebaseMessagingService
+            // handles both foreground and background delivery consistently.
+            // The Android service creates the notification locally.
             data: {
               type: "ADMIN_PRICE_UPDATE",
               update_id: updateId,
