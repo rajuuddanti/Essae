@@ -47,6 +47,7 @@ private fun AdminStoreOperationsDetailScreen(
     onClose: () -> Unit
 ) {
     var detail by remember { mutableStateOf<SupabaseAuth.StoreOperationsDetail?>(null) }
+    var storeName by rememberSaveable { mutableStateOf("") }
     var loading by rememberSaveable { mutableStateOf(true) }
     var error by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -57,6 +58,7 @@ private fun AdminStoreOperationsDetailScreen(
         auth.getStoreOperationsDetail(storeCode)
             .onSuccess {
                 detail = it
+                storeName = it.storeName
                 loading = false
             }
             .onFailure {
@@ -86,7 +88,7 @@ private fun AdminStoreOperationsDetailScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "STORE OPERATIONS DETAIL",
+                    storeName.ifBlank { storeCode },
                     style = MaterialTheme.typography.bodySmall
                 )
             }
