@@ -1,6 +1,7 @@
 package com.mahamart.essae
 
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -149,7 +150,15 @@ private fun AdminOperationsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(rows, key = { it.storeCode }) { row ->
-                    StoreOperationsCard(row)
+                    StoreOperationsCard(row) {
+                        startActivity(
+                            Intent(this@AdminOperationsActivity, AdminStoreOperationsDetailActivity::class.java)
+                                .putExtra(
+                                    AdminStoreOperationsDetailActivity.EXTRA_STORE_CODE,
+                                    row.storeCode
+                                )
+                        )
+                    }
                 }
             }
         }
@@ -181,7 +190,10 @@ private fun SummaryCard(
 }
 
 @Composable
-private fun StoreOperationsCard(row: SupabaseAuth.StoreOperations) {
+private fun StoreOperationsCard(
+    row: SupabaseAuth.StoreOperations,
+    onOpen: () -> Unit
+) {
     val hasPending = row.pendingCount > 0
     val deviceText = when {
         row.deviceCount == 0 -> "NO DEVICE"
@@ -228,6 +240,12 @@ private fun StoreOperationsCard(row: SupabaseAuth.StoreOperations) {
                 "Last completed upload: ${formatIst(row.lastUploadAt)}",
                 style = MaterialTheme.typography.bodySmall
             )
+            OutlinedButton(
+                onClick = onOpen,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("OPEN STORE")
+            }
         }
     }
 }
