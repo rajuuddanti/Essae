@@ -53,7 +53,7 @@ alter table public.store_price_change_log
 
 alter table public.store_price_change_log
     add constraint store_price_change_log_status_check
-    check (status in ('PENDING', 'UPLOADED', 'REVERTED', 'SUPERSEDED'));
+    check (status in ('PENDING', 'MASTER', 'UPLOADED', 'REVERTED', 'SUPERSEDED'));
 
 -- Pending Admin Push records superseded by an authorized CSV baseline
 -- must stop appearing as pending, while history remains available.
@@ -171,7 +171,7 @@ begin
                 coalesce(v_old_price, 0),
                 v_new_price,
                 'CSV',
-                'UPLOADED',
+                'MASTER',
                 now()
             );
         end if;
