@@ -6,6 +6,10 @@ import java.io.File
 
 object LabelDesignStore {
 
+    private const val PREFS = "label_design_store"
+    private const val KEY_LABEL_TEXT = "label_text"
+    private const val DEFAULT_LABEL_TEXT = "MAHALAXMI MAHA MART"
+
     enum class Slot(
         val title: String,
         val bundledAsset: String,
@@ -25,6 +29,42 @@ object LabelDesignStore {
 
     private fun dir(context: Context): File =
         File(context.filesDir, "label_designs").apply { mkdirs() }
+
+    fun getLabelText(context: Context): String {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LABEL_TEXT, DEFAULT_LABEL_TEXT)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: DEFAULT_LABEL_TEXT
+    }
+
+    fun saveLabelText(context: Context, value: String) {
+        val newText = value.trim()
+        require(newText.isNotBlank()) { "Label text is required" }
+        ensureBundled(context)
+
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val oldText = getLabelText(context)
+
+        for (slot in Slot.values()) {
+            val file = File(dir(context), slot.localFile)
+            if (!file.exists() || file.length() == 0L) continue
+
+            val content = file.readText(Charsets.UTF_8)
+            val updated = content
+                .replace(oldText, newText)
+                .replace("MAHALAXMI MAHA MART", newText)
+                .replace("MAHALAXMI MAHAMART", newText)
+
+            if (updated != content) {
+                file.writeText(updated, Charsets.UTF_8)
+            }
+        }
+
+        prefs.edit()
+            .putString(KEY_LABEL_TEXT, newText)
+            .apply()
+    }
 
     fun ensureBundled(context: Context) {
         for (slot in Slot.values()) {
