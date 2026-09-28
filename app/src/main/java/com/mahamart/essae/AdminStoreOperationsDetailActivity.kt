@@ -1,0 +1,255 @@
+package com.mahamart.essae
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mahamart.essae.cloud.SupabaseAuth
+import kotlinx.coroutines.launch
+
+class AdminStoreOperationsDetailActivity : ComponentActivity() {
+    private lateinit var auth: SupabaseAuth
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        auth = SupabaseAuth(applicationContext)
+        val storeCode = intent.getStringExtra(EXTRA_STORE_CODE).orEmpty()
+
+        setContent {
+            MahaMartTheme {
+                AdminStoreOperationsDetailScreen(
+                    auth = auth,
+                    storeCode = storeCode,
+                    onClose = { finish() }
+                )
+            }
+        }
+    }
+
+    companion object {
+        const val EXTRA_STORE_CODE = "store_code"
+    }
+}
+
+@Composable
+private fun AdminStoreOperationsDetailScreen(
+    auth: SupabaseAuth,
+    storeCode: String,
+    onClose: () -> Unit
+) {
+    var detail by remember { mutableStateOf<SupabaseAuth.StoreOperationsDetail?>(null) }
+    var loading by rememberSaveable { mutableStateOf(true) }
+    var error by rememberSaveable { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    suspend fun refresh() {
+        loading = true
+        error = ""
+        auth.getStoreOperationsDetail(storeCode)
+            .onSuccess {
+                detail = it
+                loading = false
+            }
+            .onFailure {
+                error = it.message ?: "Could not load store details."
+                loading = false
+            }
+    }
+
+    LaunchedEffect(storeCode) {
+        if (storeCode.isBlank()) {
+            error = "Store code is missing."
+            loading = false
+        } else {
+            refresh()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    storeCode,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "STORE OPERATIONS DETAIL",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            OutlinedButton(onClick = { scope.launch { refresh() } }) {
+                Text("REFRESH")
+            }
+        }
+
+        if (error.isNotBlank()) {
+            Text(error, color = MaterialTheme.colorScheme.error)
+        }
+
+        if (loading && detail == null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(strokeWidth = 2.dp)
+            }
+        }
+
+        detail?.let { d ->
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item { SectionTitle("PENDING PRICES") }
+                if (d.pendingChanges.isEmpty()) {
+                    item { EmptyText("No pending price changes.") }
+                } else {
+                    items(d.pendingChanges) { row -> PriceChangeCard(row) }
+                }
+
+                item { SectionTitle("RECENT PRICE CHANGES") }
+                if (d.recentChanges.isEmpty()) {
+                    item { EmptyText("No price-change history.") }
+                } else {
+                    items(d.recentChanges.take(30)) { row -> PriceChangeCard(row) }
+                }
+
+                item { SectionTitle("UPLOAD HISTORY") }
+                if (d.uploads.isEmpty()) {
+                    item { EmptyText("No scale-upload history.") }
+                } else {
+                    items(d.uploads) { row -> UploadCard(row) }
+                }
+
+                item { SectionTitle("ADMIN PUSH HISTORY") }
+                if (d.pushes.isEmpty()) {
+                    item { EmptyText("No Admin Push history.") }
+                } else {
+                    items(d.pushes) { row -> PushCard(row) }
+                }
+            }
+        }
+
+        OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
+            Text("CLOSE")
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        modifier = Modifier.padding(top = 8.dp),
+        fontWeight = FontWeight.Bold,
+        fontSize = 13.sp
+    )
+}
+
+@Composable
+private fun EmptyText(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.padding(vertical = 6.dp)
+    )
+}
+
+@Composable
+private fun PriceChangeCard(row: SupabaseAuth.PriceChangeRow) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    row.pluNo.toString() + "  " + row.pluName.ifBlank { "Unnamed PLU" },
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(row.status, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+            }
+            Text(
+                "₹" + String.format("%.2f", row.oldPrice) + " → ₹" +
+                    String.format("%.2f", row.newPrice) + "  •  " + row.source,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text("Changed: " + formatIst(row.changedAt), style = MaterialTheme.typography.bodySmall)
+            if (row.uploadedAt != null) {
+                Text("Uploaded: " + formatIst(row.uploadedAt), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun UploadCard(row: SupabaseAuth.ScaleUploadRow) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(row.status, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                Text(row.pluCount.toString() + " PLUs", fontSize = 11.sp)
+            }
+            Text("Device: " + row.deviceId.ifBlank { "—" }, style = MaterialTheme.typography.bodySmall)
+            Text("Scale: " + row.scaleIp.ifBlank { "—" }, style = MaterialTheme.typography.bodySmall)
+            Text("Started: " + formatIst(row.startedAt), style = MaterialTheme.typography.bodySmall)
+            Text("Completed: " + formatIst(row.completedAt), style = MaterialTheme.typography.bodySmall)
+            if (row.errorMessage != null) {
+                Text(
+                    row.errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PushCard(row: SupabaseAuth.PricePushRow) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    row.itemCount.toString() + " PLUs • " + row.mode,
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(row.status, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+            }
+            Text("By: " + row.createdByName.ifBlank { "Admin" }, style = MaterialTheme.typography.bodySmall)
+            Text("Created: " + formatIst(row.createdAt), style = MaterialTheme.typography.bodySmall)
+            Text("Synced: " + formatIst(row.syncedAt), style = MaterialTheme.typography.bodySmall)
+            Text("Uploaded: " + formatIst(row.uploadedAt), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+private fun formatIst(value: String?): String {
+    if (value.isNullOrBlank()) return "—"
+    return runCatching {
+        java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")
+            .withZone(java.time.ZoneId.of("Asia/Kolkata"))
+            .format(java.time.Instant.parse(value))
+    }.getOrDefault(value)
+}
