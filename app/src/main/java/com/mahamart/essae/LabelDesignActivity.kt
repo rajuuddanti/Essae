@@ -308,7 +308,7 @@ fun LabelDesignScreen() {
                                     FontWeight.Bold
                             )
                         }
-                    }
+                    },
 
                     actions = {
 
