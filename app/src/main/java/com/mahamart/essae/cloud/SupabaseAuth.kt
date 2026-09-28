@@ -300,6 +300,8 @@ class SupabaseAuth(context: Context) {
                     }
                 }
 
+                // A store can receive many Admin Push records for the same PLU.
+                // Pending should represent unique PLUs still waiting for physical upload.
                 val pendingAdminPushes = pushRows
                     .filter { it.status == "SYNCED" && it.uploadedAt == null }
                     .flatMap { push ->
@@ -313,11 +315,16 @@ class SupabaseAuth(context: Context) {
                             )
                         }
                     }
+                    .distinctBy { it.pluNo }
+
+                val pendingAdminPluNos = pendingAdminPushes.map { it.pluNo }.toSet()
+                val pendingChanges = changeRows
+                    .filter { it.status == "PENDING" && it.pluNo !in pendingAdminPluNos }
 
                 StoreOperationsDetail(
                     storeCode = storeCode,
                     storeName = resolvedStoreName,
-                    pendingChanges = changeRows.filter { it.status == "PENDING" },
+                    pendingChanges = pendingChanges,
                     pendingAdminPushes = pendingAdminPushes,
                     recentChanges = changeRows,
                     uploads = uploadRows,
@@ -359,7 +366,7 @@ class SupabaseAuth(context: Context) {
                 // physically uploaded to the scale count as pending too.
                 val pendingPushUrl =
                     "$baseUrl/rest/v1/admin_price_push_report" +
-                        "?select=store_code,item_count,status,uploaded_at" +
+                        "?select=store_code,items,status,uploaded_at" +
                         "&status=eq.SYNCED" +
                         "&uploaded_at=is.null" +
                         "&order=synced_at.desc"
@@ -370,13 +377,20 @@ class SupabaseAuth(context: Context) {
                 }
 
                 val pendingPushRows = JSONArray(pendingPushResponse)
+                val pendingPushPluByStore = mutableMapOf<String, MutableSet<Int>>()
                 for (i in 0 until pendingPushRows.length()) {
                     val row = pendingPushRows.getJSONObject(i)
                     val code = row.optString("store_code")
-                    if (code.isNotBlank()) {
-                        pendingByStore[code] =
-                            (pendingByStore[code] ?: 0) + row.optInt("item_count", 0)
-                    }
+                    if (code.isBlank()) continue
+
+                    val pluSet = pendingPushPluByStore.getOrPut(code) { mutableSetOf() }
+                    parsePricePushItems(row.optJSONArray("items"))
+                        .forEach { item -> pluSet.add(item.pluNo) }
+                }
+
+                pendingPushPluByStore.forEach { (code, pluNos) ->
+                    pendingByStore[code] =
+                        (pendingByStore[code] ?: 0) + pluNos.size
                 }
 
                 val uploadUrl =
