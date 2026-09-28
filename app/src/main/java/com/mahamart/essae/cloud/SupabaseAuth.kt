@@ -303,7 +303,7 @@ class SupabaseAuth(context: Context) {
                 // A store can receive many Admin Push records for the same PLU.
                 // Pending should represent unique PLUs still waiting for physical upload.
                 val pendingAdminPushes = pushRows
-                    .filter { it.status == "SYNCED" && it.uploadedAt == null }
+                    .filter { it.status.equals("SYNCED", ignoreCase = true) && it.uploadedAt.isNullOrBlank() }
                     .flatMap { push ->
                         push.items.map { item ->
                             PendingAdminPushItem(
@@ -369,7 +369,7 @@ class SupabaseAuth(context: Context) {
                 // physically uploaded to the scale count as pending too.
                 val pendingPushUrl =
                     "$baseUrl/rest/v1/admin_price_push_report" +
-                        "?select=store_code,items,status,uploaded_at" +
+                        "?select=store_code,item_count,status,uploaded_at" +
                         "&status=eq.SYNCED" +
                         "&uploaded_at=is.null" +
                         "&order=synced_at.desc"
@@ -381,7 +381,7 @@ class SupabaseAuth(context: Context) {
 
                 val pendingPushRows = JSONArray(pendingPushResponse)
                 // Store overview counts pending Admin Push updates, not unique PLUs.
-                // Example: 44 pushed updates for 5 PLUs = 44 PENDING here.
+                // Example: 45 pushed updates for 5 PLUs = 45 PENDING here.
                 val pendingByStore = pendingPluByStore
                     .mapValues { it.value.size }
                     .toMutableMap()
