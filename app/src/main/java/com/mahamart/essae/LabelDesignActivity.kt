@@ -28,6 +28,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -48,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mahamart.essae.network.EssaeLabelTransport
@@ -94,6 +98,18 @@ fun LabelDesignScreen() {
 
     var status by remember {
         mutableStateOf("READY")
+    }
+
+    var labelStoreName by remember {
+        mutableStateOf(LabelDesignStore.getLabelText(context))
+    }
+
+    var showLabelStoreNameDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var labelStoreNameInput by remember {
+        mutableStateOf(labelStoreName)
     }
 
     var isBusy by remember {
@@ -148,6 +164,68 @@ fun LabelDesignScreen() {
         }
 
     MahaMartTheme {
+
+        if (showLabelStoreNameDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showLabelStoreNameDialog = false
+                },
+                title = {
+                    Text(
+                        "LABEL STORE NAME",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Enter the exact text to print on both label designs.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        OutlinedTextField(
+                            value = labelStoreNameInput,
+                            onValueChange = { labelStoreNameInput = it },
+                            label = { Text("Store / Label Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            "Example: MAHA MART BURUGUPALLY  •  or  MAHALAXMI MAHA MART",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scaleTextSecondaryColor()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val value = labelStoreNameInput.trim()
+                            if (value.isNotBlank()) {
+                                LabelDesignStore.saveLabelText(context, value)
+                                labelStoreName = value
+                                labelStoreNameInput = value
+                                status = "LABEL NAME SAVED FOR BOTH DESIGNS"
+                                connectionState = ConnectionState.READY
+                                showLabelStoreNameDialog = false
+                            }
+                        }
+                    ) {
+                        Text("SAVE", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showLabelStoreNameDialog = false
+                        }
+                    ) {
+                        Text("CANCEL")
+                    }
+                }
+            )
+        }
 
         Scaffold(
 
@@ -231,6 +309,21 @@ fun LabelDesignScreen() {
                             )
                         }
                     }
+
+                    actions = {
+
+                        IconButton(
+                            onClick = {
+                                labelStoreNameInput = labelStoreName
+                                showLabelStoreNameDialog = true
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_label_store_name),
+                                contentDescription = "Label store name"
+                            )
+                        }
+                    }
                 )
             }
 
@@ -252,6 +345,13 @@ fun LabelDesignScreen() {
                 LabelSectionTitle(
                     "LABEL DESIGN",
                     "Direct Essae label design tools"
+                )
+
+                Text(
+                    "LABEL TEXT: $labelStoreName",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scaleTextSecondaryColor()
                 )
 
                 // ---------------------------------------------------------
