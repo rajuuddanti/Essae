@@ -145,9 +145,6 @@ Deno.serve(async (req) => {
             },
             android: {
               priority: "HIGH",
-              notification: {
-                channel_id: "admin_price_updates",
-              },
             },
           },
         }),
