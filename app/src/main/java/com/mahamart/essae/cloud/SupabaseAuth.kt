@@ -279,7 +279,7 @@ class SupabaseAuth(context: Context) {
                 }
 
                 val pushes = getRows(
-                    "admin_price_push_report?select=update_id,created_at,created_by_name,mode,item_count,status,synced_at,uploaded_at&store_code=eq.$encoded&order=created_at.desc&limit=50"
+                    "admin_price_push_report?select=update_id,created_at,created_by_name,mode,item_count,items,status,synced_at,uploaded_at&store_code=eq.$encoded&order=created_at.desc&limit=50"
                 )
                 val pushRows = buildList {
                     for (i in 0 until pushes.length()) {
@@ -291,6 +291,7 @@ class SupabaseAuth(context: Context) {
                                 createdByName = row.optString("created_by_name"),
                                 mode = row.optString("mode"),
                                 itemCount = row.optInt("item_count", 0),
+                                items = parsePricePushItems(row.optJSONArray("items")),
                                 status = row.optString("status"),
                                 syncedAt = row.optString("synced_at").ifBlank { null },
                                 uploadedAt = row.optString("uploaded_at").ifBlank { null }
@@ -299,10 +300,25 @@ class SupabaseAuth(context: Context) {
                     }
                 }
 
+                val pendingAdminPushes = pushRows
+                    .filter { it.status == "SYNCED" && it.uploadedAt == null }
+                    .flatMap { push ->
+                        push.items.map { item ->
+                            PendingAdminPushItem(
+                                updateId = push.updateId,
+                                pluNo = item.pluNo,
+                                pluName = item.pluName,
+                                newPrice = item.newPrice,
+                                pushedAt = push.syncedAt ?: push.createdAt
+                            )
+                        }
+                    }
+
                 StoreOperationsDetail(
                     storeCode = storeCode,
                     storeName = resolvedStoreName,
                     pendingChanges = changeRows.filter { it.status == "PENDING" },
+                    pendingAdminPushes = pendingAdminPushes,
                     recentChanges = changeRows,
                     uploads = uploadRows,
                     pushes = pushRows
@@ -336,6 +352,30 @@ class SupabaseAuth(context: Context) {
                     val code = row.optString("store_code")
                     if (code.isNotBlank()) {
                         pendingByStore[code] = (pendingByStore[code] ?: 0) + 1
+                    }
+                }
+
+                // Admin Pushes already synced to the store phone but not yet
+                // physically uploaded to the scale count as pending too.
+                val pendingPushUrl =
+                    "$baseUrl/rest/v1/admin_price_push_report" +
+                        "?select=store_code,item_count,status,uploaded_at" +
+                        "&status=eq.SYNCED" +
+                        "&uploaded_at=is.null" +
+                        "&order=synced_at.desc"
+                val pendingPushConnection = open(pendingPushUrl, "GET", token)
+                val pendingPushResponse = readResponse(pendingPushConnection)
+                if (pendingPushConnection.responseCode !in 200..299) {
+                    error(extractError(pendingPushResponse, "Could not load pending Admin Pushes."))
+                }
+
+                val pendingPushRows = JSONArray(pendingPushResponse)
+                for (i in 0 until pendingPushRows.length()) {
+                    val row = pendingPushRows.getJSONObject(i)
+                    val code = row.optString("store_code")
+                    if (code.isNotBlank()) {
+                        pendingByStore[code] =
+                            (pendingByStore[code] ?: 0) + row.optInt("item_count", 0)
                     }
                 }
 
@@ -506,6 +546,22 @@ class SupabaseAuth(context: Context) {
         return stream.bufferedReader().use { it.readText() }
     }
 
+    private fun parsePricePushItems(items: JSONArray?): List<AdminPriceItem> {
+        if (items == null) return emptyList()
+        return buildList {
+            for (i in 0 until items.length()) {
+                val item = items.optJSONObject(i) ?: continue
+                add(
+                    AdminPriceItem(
+                        pluNo = item.optInt("plu_no", 0),
+                        pluName = item.optString("plu_name").ifBlank { "Unnamed PLU" },
+                        newPrice = item.optDouble("new_price", 0.0)
+                    )
+                )
+            }
+        }
+    }
+
     private fun extractError(body: String, fallback: String): String {
         return runCatching {
             val json = JSONObject(body)
@@ -558,7 +614,16 @@ class SupabaseAuth(context: Context) {
         val pendingChanges: List<PriceChangeRow>,
         val recentChanges: List<PriceChangeRow>,
         val uploads: List<ScaleUploadRow>,
+        val pendingAdminPushes: List<PendingAdminPushItem>,
         val pushes: List<PricePushRow>
+    )
+
+    data class PendingAdminPushItem(
+        val updateId: String,
+        val pluNo: Int,
+        val pluName: String,
+        val newPrice: Double,
+        val pushedAt: String?
     )
 
     data class PriceChangeRow(
@@ -588,6 +653,7 @@ class SupabaseAuth(context: Context) {
         val createdByName: String,
         val mode: String,
         val itemCount: Int,
+        val items: List<AdminPriceItem>,
         val status: String,
         val syncedAt: String?,
         val uploadedAt: String?
