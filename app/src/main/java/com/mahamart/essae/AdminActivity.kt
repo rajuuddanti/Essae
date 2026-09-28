@@ -207,6 +207,21 @@ private fun AdminDashboard(
             Text("STORE / DEVICE MAPPING")
         }
         Text(
+            "View registered devices, pending prices and latest completed uploads.",
+            style = MaterialTheme.typography.bodySmall
+        )
+
+        Button(
+            onClick = {
+                context.startActivity(
+                    Intent(context, AdminOperationsActivity::class.java)
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("STORE OPERATIONS")
+        }
+        Text(
             "View every registered Android device and its permanent store mapping.",
             style = MaterialTheme.typography.bodySmall
         )
