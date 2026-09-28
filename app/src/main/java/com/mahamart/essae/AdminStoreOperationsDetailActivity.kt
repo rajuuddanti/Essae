@@ -115,7 +115,13 @@ private fun AdminStoreOperationsDetailScreen(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item { SectionTitle("PENDING PRICES") }
+                item {
+                    val pendingCount = d.pendingAdminPushes.size + d.pendingChanges.size
+                    SectionTitle(
+                        if (pendingCount > 0) "PENDING PRICES • $pendingCount"
+                        else "PENDING PRICES"
+                    )
+                }
                 if (d.pendingAdminPushes.isEmpty() && d.pendingChanges.isEmpty()) {
                     item { EmptyText("No pending price changes.") }
                 } else {
@@ -251,7 +257,10 @@ private fun PushCard(row: SupabaseAuth.PricePushRow) {
             Text("By: " + row.createdByName.ifBlank { "Admin" }, style = MaterialTheme.typography.bodySmall)
             Text("Created: " + formatIst(row.createdAt), style = MaterialTheme.typography.bodySmall)
             Text("Synced: " + formatIst(row.syncedAt), style = MaterialTheme.typography.bodySmall)
-            Text("Uploaded: " + formatIst(row.uploadedAt), style = MaterialTheme.typography.bodySmall)
+            Text(
+                "Uploaded: " + (row.uploadedAt?.let { formatIst(it) } ?: "Not uploaded"),
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
