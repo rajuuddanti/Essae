@@ -529,29 +529,3 @@ private fun buildLastChangedText(
     }
 }
 
-private fun formatIstDayMonth(value: String?): String? {
-    if (value.isNullOrBlank()) return null
-
-    return runCatching {
-        Instant.parse(value)
-            .atZone(ZoneId.of("Asia/Kolkata"))
-            .format(DateTimeFormatter.ofPattern("dd-MM"))
-    }.getOrNull()
-}
-
-private fun formatIstLastChanged(value: String?): String {
-    if (value.isNullOrBlank()) return "—"
-
-    return runCatching {
-        Instant.parse(value)
-            .atZone(ZoneId.of("Asia/Kolkata"))
-            .format(
-                DateTimeFormatter.ofPattern(
-                    "dd-MM-yyyy, HH:mm"
-                )
-            )
-    }.getOrElse {
-        "—"
-    }
-}
-
