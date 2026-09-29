@@ -198,6 +198,11 @@ class MainVm(
     private val auditSync = ManualPriceAuditSync(context.applicationContext)
     private val appContext = context.applicationContext
     private val adminPushSync = StoreAdminPushSync(appContext)
+    private val crashSafeHandler = CoroutineExceptionHandler { _, throwable ->
+        if (throwable is CancellationException) return@CoroutineExceptionHandler
+        status = "Operation failed safely: " +
+            (throwable.message?.takeIf { it.isNotBlank() } ?: "Unexpected error")
+    }
 
     /*
      * UI marker for the current local edit session.
@@ -226,7 +231,7 @@ class MainVm(
         onConnected: () -> Unit,
         onError: () -> Unit
     ) {
-        viewModelScope.launch {
+        viewModelScope.launch(crashSafeHandler) {
             status = "TESTING"
 
             transport.testConnection(
