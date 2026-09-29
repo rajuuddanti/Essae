@@ -268,9 +268,3 @@ Then build/run again from Android Studio or USB device.
 - Central Android timestamp formatting uses Asia/Kolkata (IST).
 - Live Supabase migrations for this behavior are applied.
 
-
-## 23. Store test screenshot evidence — 2026-09-29
-- Raw screenshot observations from the latest store test are documented in `28_STORE_TEST_SCREENSHOT_EVIDENCE_2026-09-29.md`.
-- The screenshots show MM017 with 133 pending prices, while the Store Operations overview shows 710 pending for MM017 and 275 for MM016.
-- The screenshots also show an Admin Push PLU screen where Master price is `—` for KANDULU LOOSE and store rows display different current/LC values.
-- These differences are to be analyzed against the current backend/UI implementation before making further code changes.
