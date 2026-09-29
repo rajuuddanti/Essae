@@ -144,8 +144,6 @@ class SupabaseAuth(context: Context) {
                                     null
                                 else
                                     row.optDouble("pending_pushed_price"),
-                                masterPrice = if (row.isNull("master_price")) null
-                                else row.optDouble("master_price"),
                                 lastUploadSource = row.optString("last_upload_source")
                                     .ifBlank { null },
                                 deviceIp = row.optString("device_ip").ifBlank { null }
@@ -334,21 +332,17 @@ class SupabaseAuth(context: Context) {
                             .firstOrNull { it.storeCode == storeCode.trim() }
 
                         val currentScalePrice = storePrice?.currentPrice
-                        val masterPrice = storePrice?.masterPrice
-
-                        // If either confirmed layer already equals this push price,
-                        // this historical push is no longer an active pending item.
+                        // current_price is the effective confirmed Admin/scale price.
+                        // The RPC returns Store Master Price when available, otherwise
+                        // the latest confirmed scale price.
+                        //
+                        // If it already equals this push price, this historical push
+                        // is no longer an active pending item.
                         if (currentScalePrice != null &&
                             kotlin.math.abs(currentScalePrice - candidate.newPrice) < 0.005
                         ) {
                             continue
                         }
-                        if (masterPrice != null &&
-                            kotlin.math.abs(masterPrice - candidate.newPrice) < 0.005
-                        ) {
-                            continue
-                        }
-
                         add(candidate)
                     }
                 }
@@ -658,7 +652,6 @@ class SupabaseAuth(context: Context) {
         val lastUploadedAt: String?,
         val pendingPushedAt: String?,
         val pendingPushedPrice: Double?,
-        val masterPrice: Double?,
         val lastUploadSource: String?,
         val deviceIp: String?
     )
