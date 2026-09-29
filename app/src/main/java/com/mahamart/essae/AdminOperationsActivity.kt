@@ -250,11 +250,3 @@ private fun StoreOperationsCard(
     }
 }
 
-private fun formatIst(value: String?): String {
-    if (value.isNullOrBlank()) return "—"
-    return runCatching {
-        DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")
-            .withZone(ZoneId.of("Asia/Kolkata"))
-            .format(Instant.parse(value))
-    }.getOrDefault(value)
-}
