@@ -152,3 +152,16 @@ Status: **code pushed; Supabase migration and Android build/device test still re
 - Android Studio Device Explorer validation confirmed the runtime LFT files under `/data/data/com.mahamart.essae/files/label_designs/` are readable Essae-Teraoka Label Design Format text and show the changed store-name field.
 - Added durable checkpoint: `24_LABEL_DESIGN_STORE_NAME_2026-09-28.md`.
 - Current development branch: `ChatGPT-sugegstions`.
+
+
+## 2026-09-29 — Admin CSV Push + UI layout fixes
+
+- Added Admin CSV Push from the Admin Dashboard.
+- CSV push reuses the existing Admin Price Update backend and notification flow.
+- Partial CSV pushes update only the PLUs present in the selected CSV; existing store PLUs outside the CSV are preserved.
+- CSV preview now shows all imported SKUs in a scrollable preview area instead of truncating at 20 rows.
+- Admin Dashboard is vertically scrollable so lower controls are not clipped on shorter screens.
+- Added durable checkpoint: `25_ADMIN_CSV_PUSH_CURRENT_2026-09-29.md`.
+- Admin CSV Push implementation commit: `ad875783a848025caeb908e2d99cdf0e3a51be07`.
+- Full CSV preview commit: `7d597ef31bae5082c5e5b04ab20cb48ad81ded03`.
+- Admin Dashboard scroll commit: `dd9f7c558484a5086cad6f0186c115fa56d9f033`.
