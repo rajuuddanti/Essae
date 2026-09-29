@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mahamart.essae.cloud.SupabaseAuth
+import com.mahamart.essae.util.TimeFormat
 
 class AdminStoreDeviceMappingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -175,8 +176,8 @@ private fun DeviceCard(device: SupabaseAuth.StoreDevice) {
             Text("DEVICE: " + device.deviceName.ifBlank { "Android Device" })
             Text("DEVICE ID: " + device.deviceId)
             Text("IP: " + device.deviceIp.ifBlank { "Not available" })
-            Text("REGISTERED: " + device.registeredAt)
-            Text("LAST SEEN: " + (device.lastSeenAt ?: "Not reported"))
+            Text("REGISTERED: " + TimeFormat.ist(device.registeredAt))
+            Text("LAST SEEN: " + (device.lastSeenAt?.let(TimeFormat::ist) ?: "Not reported"))
         }
     }
 }
