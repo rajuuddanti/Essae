@@ -362,6 +362,7 @@ class MainVm(
 
             if (connectionResult.isFailure) {
                 status = "CONNECTION ERROR"
+                ConnectionFeedback.error(appContext)
                 return@launch
             }
 
