@@ -129,14 +129,21 @@ class StoreAdminPushSync(private val context: Context) {
                         it.number == pluNo
                     }
 
-                    val plu = existing?.copy(unitPrice = newPrice)
-                        ?: Plu(
-                            number = pluNo,
-                            name = item.optString("plu_name"),
-                            code = item.optString("plu_code"),
-                            uom = item.optInt("uom", 0),
-                            unitPrice = newPrice
-                        )
+                    val pushedCode = item.optString("plu_code").trim()
+                    val resolvedCode = pushedCode.ifBlank {
+                        existing?.code.orEmpty()
+                    }
+
+                    val plu = existing?.copy(
+                        unitPrice = newPrice,
+                        code = resolvedCode
+                    ) ?: Plu(
+                        number = pluNo,
+                        name = item.optString("plu_name"),
+                        code = resolvedCode,
+                        uom = item.optInt("uom", 0),
+                        unitPrice = newPrice
+                    )
 
                     upsert(plu)
 
