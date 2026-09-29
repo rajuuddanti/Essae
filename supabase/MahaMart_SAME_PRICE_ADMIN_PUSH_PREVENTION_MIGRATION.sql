@@ -114,6 +114,34 @@ begin
           and item ? 'new_price'
           and m.master_price is distinct from
               (item->>'new_price')::numeric
+          -- Do not create another RED/PENDING action when this exact
+          -- Admin Push price is already waiting on the same device.
+          and not exists (
+              select 1
+              from public.admin_price_updates previous_update
+              join public.admin_price_update_targets previous_target
+                on previous_target.update_id = previous_update.id
+              join public.admin_price_update_device_state previous_state
+                on previous_state.update_id = previous_update.id
+               and previous_state.device_id = trim(p_device_id)
+               and previous_state.status = 'SYNCED'
+              cross join lateral jsonb_array_elements(
+                  case
+                      when jsonb_typeof(previous_update.items) = 'array'
+                      then previous_update.items
+                      else '[]'::jsonb
+                  end
+              ) previous_item
+              where previous_target.store_id = cu.store_id
+                and previous_target.status <> 'UPLOADED'
+                and previous_update.created_at < cu.created_at
+                and previous_item ? 'plu_no'
+                and previous_item ? 'new_price'
+                and (previous_item->>'plu_no')::integer =
+                    (item->>'plu_no')::integer
+                and (previous_item->>'new_price')::numeric =
+                    (item->>'new_price')::numeric
+          )
     ) actionable on true
     order by cu.created_at asc;
 end;
