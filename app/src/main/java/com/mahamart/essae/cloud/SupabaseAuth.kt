@@ -366,10 +366,40 @@ class SupabaseAuth(context: Context) {
                     }
                 }
 
-                // Pending is a SKU-level operational count, not the sum of
-                // historical Admin Push item counts. Repeated pushes of the same
-                // SKU must never inflate the store's pending number.
-                val pendingByStore = pendingPluByStore
+                // Pending is a unique SKU-level operational count. Merge
+                // unresolved Admin Push items with price-change audits by PLU,
+                // so repeated pushes of the same SKU never inflate the count.
+                val pendingByStorePlu = pendingPluByStore
+                    .mapValues { it.value.toMutableSet() }
+                    .toMutableMap()
+
+                val pendingPushUrl =
+                    "$baseUrl/rest/v1/admin_price_push_report" +
+                        "?select=store_code,items,status,uploaded_at" +
+                        "&status=eq.SYNCED" +
+                        "&uploaded_at=is.null" +
+                        "&order=synced_at.desc"
+                val pendingPushConnection = open(pendingPushUrl, "GET", token)
+                val pendingPushResponse = readResponse(pendingPushConnection)
+                if (pendingPushConnection.responseCode !in 200..299) {
+                    error(extractError(pendingPushResponse, "Could not load pending Admin Pushes."))
+                }
+
+                val pendingPushRows = JSONArray(pendingPushResponse)
+                for (i in 0 until pendingPushRows.length()) {
+                    val row = pendingPushRows.getJSONObject(i)
+                    val code = row.optString("store_code")
+                    if (code.isBlank()) continue
+
+                    val items = row.optJSONArray("items") ?: continue
+                    val set = pendingByStorePlu.getOrPut(code) { mutableSetOf() }
+                    for (j in 0 until items.length()) {
+                        val pluNo = items.optJSONObject(j)?.optInt("plu_no", 0) ?: 0
+                        if (pluNo > 0) set += pluNo
+                    }
+                }
+
+                val pendingByStore = pendingByStorePlu
                     .mapValues { it.value.size }
                     .toMutableMap()
 
