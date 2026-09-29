@@ -6,6 +6,7 @@ on:
       - feature/admin-push-notifications
       - ChatGPT-sugegstions
       - feature/ist-csv-duplicate-prevention
+      - feature/crash-hardening
   workflow_dispatch:
 
 jobs:
