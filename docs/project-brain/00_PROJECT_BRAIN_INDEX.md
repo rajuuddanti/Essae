@@ -29,3 +29,4 @@ A 2026-09-27 live Supabase Security Advisor snapshot is documented in `20_SUPABA
 
 ## Core rule
 Preserve the stable Essae transport and existing working behavior. Cloud/admin features must not casually rewrite the working scale protocol.
+- 28_ADMIN_OPERATIONS_STALE_PENDING_INVESTIGATION_2026-09-29.md — current MM017 stale Admin Push/PENDING reconciliation issue and next diagnostic steps.
