@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mahamart.essae.cloud.SupabaseAuth
 import kotlinx.coroutines.launch
+import com.mahamart.essae.util.TimeFormat
 
 class AdminStoreOperationsDetailActivity : ComponentActivity() {
     private lateinit var auth: SupabaseAuth
@@ -240,10 +241,10 @@ private fun PriceChangeCard(row: SupabaseAuth.PriceChangeRow) {
                     String.format("%.2f", row.newPrice) + "  •  " + row.source,
                 style = MaterialTheme.typography.bodySmall
             )
-            Text("Changed: " + formatIst(row.changedAt), style = MaterialTheme.typography.bodySmall)
+            Text("Changed: " + TimeFormat.ist(row.changedAt), style = MaterialTheme.typography.bodySmall)
             if (row.uploadedAt != null) {
                 Text(
-                "Uploaded: " + (row.uploadedAt?.let { formatIst(it) } ?: "Not uploaded"),
+                "Uploaded: " + (row.uploadedAt?.let { TimeFormat.ist(it) } ?: "Not uploaded"),
                 style = MaterialTheme.typography.bodySmall
             )
             }
@@ -264,8 +265,8 @@ private fun UploadCard(row: SupabaseAuth.ScaleUploadRow) {
             }
             Text("Device: " + row.deviceId.ifBlank { "—" }, style = MaterialTheme.typography.bodySmall)
             Text("Scale: " + row.scaleIp.ifBlank { "—" }, style = MaterialTheme.typography.bodySmall)
-            Text("Started: " + formatIst(row.startedAt), style = MaterialTheme.typography.bodySmall)
-            Text("Completed: " + formatIst(row.completedAt), style = MaterialTheme.typography.bodySmall)
+            Text("Started: " + TimeFormat.ist(row.startedAt), style = MaterialTheme.typography.bodySmall)
+            Text("Completed: " + TimeFormat.ist(row.completedAt), style = MaterialTheme.typography.bodySmall)
             if (row.errorMessage != null) {
                 Text(
                     row.errorMessage,
@@ -298,8 +299,8 @@ private fun PushCard(row: SupabaseAuth.PricePushRow) {
                 Text(row.status, fontWeight = FontWeight.Bold, fontSize = 11.sp)
             }
             Text("By: " + row.createdByName.ifBlank { "Admin" }, style = MaterialTheme.typography.bodySmall)
-            Text("Created: " + formatIst(row.createdAt), style = MaterialTheme.typography.bodySmall)
-            Text("Synced: " + formatIst(row.syncedAt), style = MaterialTheme.typography.bodySmall)
+            Text("Created: " + TimeFormat.ist(row.createdAt), style = MaterialTheme.typography.bodySmall)
+            Text("Synced: " + TimeFormat.ist(row.syncedAt), style = MaterialTheme.typography.bodySmall)
             Text(
                 "Uploaded: " + (row.uploadedAt?.let { formatIst(it) } ?: "Not uploaded"),
                 style = MaterialTheme.typography.bodySmall
@@ -345,11 +346,3 @@ private fun PendingAdminPushCard(row: SupabaseAuth.PendingAdminPushItem) {
     }
 }
 
-private fun formatIst(value: String?): String {
-    if (value.isNullOrBlank()) return "—"
-    return runCatching {
-        java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")
-            .withZone(java.time.ZoneId.of("Asia/Kolkata"))
-            .format(java.time.Instant.parse(value))
-    }.getOrDefault(value)
-}
