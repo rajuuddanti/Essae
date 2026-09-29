@@ -180,3 +180,25 @@ Do not change the underlying `timestamptz` storage model merely to change displa
 8. Test across multiple stores and full CSV pushes.
 9. Test restart, sync, pending, successful upload and failed upload behavior.
 10. Run CI and keep this branch isolated for testing.
+
+
+## Implementation checkpoint
+
+Implemented on this branch:
+
+- Added central Android `TimeFormat` utility using `Asia/Kolkata`.
+- Admin Push and Store Operations screens now use the central IST formatter.
+- Backend `store_get_pending_admin_price_updates_v2` now filters each SKU against `store_price_master.master_price`.
+- SAME-price rows are returned as an empty actionable item list, allowing the device to ACK the Admin Push without creating RED/PENDING state.
+- Android Store Sync now ACKs valid Admin Push updates even when the actionable item list is empty.
+- Backend `log_pending_price_changes` has a second equality check so same-price rows cannot become PENDING even if an older client sends them.
+- SAME-price outcomes are recorded as `NO_CHANGE` in `store_price_change_log` for manager visibility.
+- The reconciliation report now exposes `NO CHANGE` when the corresponding no-action audit exists.
+- CSV duplicate PLU validation already existed in Admin CSV Push and remains enforced.
+
+Live Supabase migrations applied:
+- `same_price_admin_push_prevention_2026_09_29`
+- `same_price_admin_push_audit_2026_09_29`
+- `admin_price_reconciliation_no_change_2026_09_29`
+
+A current live-data comparison found 1 same-price Admin Push item and 472 changed-price items across existing Admin Push history. Existing historical same-price rows were not retroactively rewritten; NO_CHANGE auditing begins with the new behavior.
