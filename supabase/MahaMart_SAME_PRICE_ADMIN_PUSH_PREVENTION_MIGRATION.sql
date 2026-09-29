@@ -2,6 +2,13 @@
 -- Comparison is per store + PLU against Store Master Price.
 -- History remains in admin_price_updates; only actionable rows reach the phone.
 
+alter table public.store_price_change_log
+    drop constraint if exists store_price_change_log_status_check;
+
+alter table public.store_price_change_log
+    add constraint store_price_change_log_status_check
+    check (status in ('PENDING', 'MASTER', 'UPLOADED', 'REVERTED', 'SUPERSEDED', 'NO_CHANGE'));
+
 create or replace function public.store_get_pending_admin_price_updates_v2(
     p_device_id text,
     p_device_token text,
@@ -197,7 +204,8 @@ begin
           and m.plu_no = v_plu_no;
 
         -- SAME price is a valid Admin Push result, but it requires no
-        -- scale action. Clear any older pending local/cloud action.
+        -- scale action. Keep an explicit audit row so the manager can see
+        -- that this SKU was reviewed and required NO CHANGE.
         if v_master_price is not distinct from v_new_price then
             update public.store_price_change_log
             set status = 'SUPERSEDED',
@@ -205,6 +213,31 @@ begin
             where device_id = trim(p_device_id)
               and plu_no = v_plu_no
               and status = 'PENDING';
+
+            insert into public.store_price_change_log (
+                device_ip,
+                device_id,
+                scale_ip,
+                plu_no,
+                plu_name,
+                old_price,
+                new_price,
+                source,
+                status,
+                changed_at
+            )
+            values (
+                v_device_ip,
+                trim(p_device_id),
+                coalesce(p_scale_ip, ''),
+                v_plu_no,
+                coalesce(item->>'plu_name', ''),
+                v_master_price,
+                v_new_price,
+                coalesce(p_source, 'ADMIN_PUSH'),
+                'NO_CHANGE',
+                now()
+            );
 
             continue;
         end if;
