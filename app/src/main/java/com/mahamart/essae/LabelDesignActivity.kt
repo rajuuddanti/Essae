@@ -112,6 +112,18 @@ fun LabelDesignScreen() {
         mutableStateOf(labelStoreName)
     }
 
+    var fssai by remember {
+        mutableStateOf(LabelDesignStore.getFssai(context))
+    }
+
+    var fssaiInput by remember {
+        mutableStateOf(fssai)
+    }
+
+    var fssaiError by remember {
+        mutableStateOf("")
+    }
+
     var isBusy by remember {
         mutableStateOf(false)
     }
@@ -191,6 +203,32 @@ fun LabelDesignScreen() {
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        if (LabelDesignStore.hasFssai(context)) {
+                            OutlinedTextField(
+                                value = fssaiInput,
+                                onValueChange = {
+                                    if (it.length <= 14 && it.all(Char::isDigit)) {
+                                        fssaiInput = it
+                                        fssaiError = ""
+                                    }
+                                },
+                                label = { Text("FSSAI (14 digits)") },
+                                placeholder = { Text("14-digit FSSAI number") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = fssaiError.isNotBlank()
+                            )
+
+                            if (fssaiError.isNotBlank()) {
+                                Text(
+                                    fssaiError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+
                         Text(
                             "Example: MAHA MART BURUGUPALLY  •  or  MAHALAXMI MAHA MART",
                             style = MaterialTheme.typography.bodySmall,
@@ -202,14 +240,35 @@ fun LabelDesignScreen() {
                     TextButton(
                         onClick = {
                             val value = labelStoreNameInput.trim()
-                            if (value.isNotBlank()) {
-                                LabelDesignStore.saveLabelText(context, value)
-                                labelStoreName = value
-                                labelStoreNameInput = value
-                                status = "LABEL NAME SAVED FOR BOTH DESIGNS"
-                                connectionState = ConnectionState.READY
-                                showLabelStoreNameDialog = false
+                            val fssaiValue = fssaiInput.trim()
+                            if (value.isBlank()) {
+                                return@TextButton
                             }
+
+                            if (LabelDesignStore.hasFssai(context) &&
+                                (fssaiValue.length != 14 || !fssaiValue.all(Char::isDigit))
+                            ) {
+                                fssaiError = "Enter exactly 14 digits."
+                                return@TextButton
+                            }
+
+                            LabelDesignStore.saveLabelText(context, value)
+
+                            if (LabelDesignStore.hasFssai(context)) {
+                                LabelDesignStore.saveFssai(context, fssaiValue)
+                                fssai = fssaiValue
+                                fssaiInput = fssaiValue
+                            }
+
+                            labelStoreName = value
+                            labelStoreNameInput = value
+                            status = if (LabelDesignStore.hasFssai(context)) {
+                                "LABEL NAME + FSSAI SAVED"
+                            } else {
+                                "LABEL NAME SAVED FOR BOTH DESIGNS"
+                            }
+                            connectionState = ConnectionState.READY
+                            showLabelStoreNameDialog = false
                         }
                     ) {
                         Text("SAVE", fontWeight = FontWeight.Bold)
@@ -315,6 +374,9 @@ fun LabelDesignScreen() {
                         IconButton(
                             onClick = {
                                 labelStoreNameInput = labelStoreName
+                                fssai = LabelDesignStore.getFssai(context)
+                                fssaiInput = fssai
+                                fssaiError = ""
                                 showLabelStoreNameDialog = true
                             }
                         ) {
