@@ -79,6 +79,8 @@ import com.mahamart.essae.cloud.ManualPriceAuditSync
 import com.mahamart.essae.cloud.StoreAdminPushSync
 import com.mahamart.essae.network.EssaeTransport
 import com.mahamart.essae.util.CsvImporter
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.stateIn
@@ -268,7 +270,7 @@ class MainVm(
             return
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(crashSafeHandler) {
 
             status = "SYNCING CSV PRICES TO ADMIN..."
 
@@ -350,7 +352,7 @@ class MainVm(
             return
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(crashSafeHandler) {
 
             status = "TESTING"
 
@@ -464,7 +466,7 @@ class MainVm(
 
         val changed = plu.unitPrice != price
 
-        viewModelScope.launch {
+        viewModelScope.launch(crashSafeHandler) {
 
             dao.upsert(
                 plu.copy(
@@ -507,7 +509,7 @@ class MainVm(
     }
 
     fun syncAdminPush() {
-        viewModelScope.launch {
+        viewModelScope.launch(crashSafeHandler) {
             val result = adminPushSync.pullAndApply(
                 currentPlus = plus.value,
                 upsert = { plu -> dao.upsert(plu) },
@@ -533,7 +535,7 @@ class MainVm(
     }
 
     fun retryUnsyncedAudits() {
-        viewModelScope.launch {
+        viewModelScope.launch(crashSafeHandler) {
             val pending = auditDao.getUnsynced()
             if (pending.isEmpty()) return@launch
 
@@ -552,7 +554,7 @@ class MainVm(
     }
 
     fun clear() {
-        viewModelScope.launch {
+        viewModelScope.launch(crashSafeHandler) {
 
             dao.deleteAll()
 
