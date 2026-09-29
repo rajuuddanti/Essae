@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -81,7 +83,13 @@ private fun AdminDashboard(
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
         Text("Admin Dashboard", style = MaterialTheme.typography.headlineMedium)
         Text(profile.fullName.ifBlank { "MahaMart Admin" })
         Text(profile.role, style = MaterialTheme.typography.labelLarge)
@@ -103,7 +111,7 @@ private fun AdminDashboard(
         Button({ context.startActivity(Intent(context, AdminOperationsActivity::class.java)) }, Modifier.fillMaxWidth()) { Text("STORE OPERATIONS") }
         Text("View every registered Android device and its permanent store mapping.", style = MaterialTheme.typography.bodySmall)
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) { Text("CLOSE") }
         TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("LOG OUT") }
     }
