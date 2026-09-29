@@ -438,7 +438,8 @@ private fun AdminPushScreen(
                                         SupabaseAuth.AdminPriceItem(
                                             pluNo = selectedPlu!!.number,
                                             pluName = selectedPlu!!.name,
-                                            newPrice = price
+                                            newPrice = price,
+                                            pluCode = selectedPlu!!.code
                                         )
                                     ),
                                     note = "Admin Push from store-price view"
