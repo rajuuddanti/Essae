@@ -5,6 +5,7 @@ on:
     branches:
       - feature/admin-push-notifications
       - ChatGPT-sugegstions
+      - feature/ist-csv-duplicate-prevention
   workflow_dispatch:
 
 jobs:
