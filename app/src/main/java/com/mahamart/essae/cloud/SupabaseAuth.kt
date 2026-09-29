@@ -282,7 +282,7 @@ class SupabaseAuth(context: Context) {
                 }
 
                 val pushes = getRows(
-                    "admin_price_push_report?select=update_id,created_at,created_by_name,mode,item_count,items,status,synced_at,uploaded_at&store_code=eq.$encoded&order=created_at.desc&limit=50"
+                    "admin_price_push_report?select=update_id,created_at,created_by_name,mode,item_count,items,status,synced_at,uploaded_at&store_code=eq.$encoded&order=created_at.desc&limit=500"
                 )
                 val pushRows = buildList {
                     for (i in 0 until pushes.length()) {
