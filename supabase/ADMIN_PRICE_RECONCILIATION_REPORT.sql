@@ -108,6 +108,23 @@ select
   pm.source as current_admin_price_source,
   pm.updated_at as current_admin_price_updated_at,
   case
+    when ua.manager_uploaded_at is null
+         and exists (
+             select 1
+             from public.store_price_change_log nc
+             where nc.device_id = any (
+                 select d.device_id
+                 from public.store_devices d
+                 where d.store_id = ap.store_id
+                   and d.active = true
+             )
+               and nc.plu_no = ap.plu_no
+               and nc.source = 'ADMIN_PUSH'
+               and nc.status = 'NO_CHANGE'
+               and nc.new_price = ap.admin_push_price
+               and nc.changed_at >= ap.admin_pushed_at
+         )
+      then 'NO CHANGE'
     when ua.manager_uploaded_at is null then 'PENDING'
     when ua.manager_upload_price = ap.admin_push_price then 'MATCH'
     else 'DIFFERENT'
