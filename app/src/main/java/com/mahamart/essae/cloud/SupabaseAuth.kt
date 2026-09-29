@@ -144,6 +144,8 @@ class SupabaseAuth(context: Context) {
                                     null
                                 else
                                     row.optDouble("pending_pushed_price"),
+                                masterPrice = if (row.isNull("master_price")) null
+                                else row.optDouble("master_price"),
                                 lastUploadSource = row.optString("last_upload_source")
                                     .ifBlank { null },
                                 deviceIp = row.optString("device_ip").ifBlank { null }
@@ -302,8 +304,14 @@ class SupabaseAuth(context: Context) {
                 }
 
                 // A store can receive many Admin Push records for the same PLU.
-                // Pending should represent unique PLUs still waiting for physical upload.
-                val pendingAdminPushes = pushRows
+                // Pending must represent the latest unresolved target, not merely any
+                // historical SYNCED row whose uploaded_at is still null.
+                //
+                // Reconcile each latest pushed PLU against the current confirmed
+                // physical-scale price. If the scale is already at the pushed price,
+                // the old Admin Push is no longer pending even when its historical
+                // report row has no uploaded_at.
+                val candidatePendingAdminPushes = pushRows
                     .filter { it.status.equals("SYNCED", ignoreCase = true) && it.uploadedAt.isNullOrBlank() }
                     .flatMap { push ->
                         push.items.map { item ->
@@ -316,7 +324,34 @@ class SupabaseAuth(context: Context) {
                             )
                         }
                     }
-                    .distinctBy { it.pluNo }
+                    .groupBy { it.pluNo }
+                    .mapNotNull { (_, rows) -> rows.maxByOrNull { it.pushedAt.orEmpty() } }
+
+                val pendingAdminPushes = buildList {
+                    for (candidate in candidatePendingAdminPushes) {
+                        val storePrice = getStorePluPrices(candidate.pluNo)
+                            .getOrElse { emptyList() }
+                            .firstOrNull { it.storeCode == storeCode.trim() }
+
+                        val currentScalePrice = storePrice?.currentPrice
+                        val masterPrice = storePrice?.masterPrice
+
+                        // If either confirmed layer already equals this push price,
+                        // this historical push is no longer an active pending item.
+                        if (currentScalePrice != null &&
+                            kotlin.math.abs(currentScalePrice - candidate.newPrice) < 0.005
+                        ) {
+                            continue
+                        }
+                        if (masterPrice != null &&
+                            kotlin.math.abs(masterPrice - candidate.newPrice) < 0.005
+                        ) {
+                            continue
+                        }
+
+                        add(candidate)
+                    }
+                }
 
                 val pendingAdminPluNos = pendingAdminPushes.map { it.pluNo }.toSet()
                 val pendingChanges = changeRows
@@ -623,6 +658,7 @@ class SupabaseAuth(context: Context) {
         val lastUploadedAt: String?,
         val pendingPushedAt: String?,
         val pendingPushedPrice: Double?,
+        val masterPrice: Double?,
         val lastUploadSource: String?,
         val deviceIp: String?
     )
