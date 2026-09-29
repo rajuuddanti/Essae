@@ -33,7 +33,7 @@ The local-first Room/PLU and direct Essae upload path are the proven core.
 ### Admin
 - Admin login required.
 - Hidden Admin entry: long-press Scale Manager.
-- Admin modules: Admin Push, Reports, Store/Device Mapping, Store Device Registration, Label Design, Refresh, Logout.
+- Admin modules: Admin Push, Admin CSV Push, Reports, Store/Device Mapping, Store Device Registration, Label Design, Refresh, Logout.
 - Admin Push creates pending cloud updates; it does not directly upload to Essae.
 
 ## 4. Price state machine
@@ -236,3 +236,12 @@ Then build/run again from Android Studio or USB device.
 - Android Studio Device Explorer confirmed both generated LFTs are readable Essae-Teraoka Label Design Format text and the store-name field changes in the generated copies.
 - Original templates under `app/src/main/assets/` remain unchanged.
 - See `24_LABEL_DESIGN_STORE_NAME_2026-09-28.md` for the test checkpoint.
+
+
+## 20. Current Admin CSV Push checkpoint — 2026-09-29
+- Admin CSV Push is implemented on `ChatGPT-sugegstions`.
+- It reuses the existing Admin Price Update RPC and notification flow.
+- Partial CSVs update only the PLUs present in the CSV; they do not replace the store's existing PLU dataset.
+- CSV preview displays all imported SKUs inside a scrollable fixed-height preview.
+- Admin Dashboard is vertically scrollable so lower controls are not clipped on shorter screens.
+- See `25_ADMIN_CSV_PUSH_CURRENT_2026-09-29.md` for the detailed checkpoint.
