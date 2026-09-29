@@ -366,34 +366,12 @@ class SupabaseAuth(context: Context) {
                     }
                 }
 
-                // Admin Pushes already synced to the store phone but not yet
-                // physically uploaded to the scale count as pending too.
-                val pendingPushUrl =
-                    "$baseUrl/rest/v1/admin_price_push_report" +
-                        "?select=store_code,item_count,status,uploaded_at" +
-                        "&status=eq.SYNCED" +
-                        "&uploaded_at=is.null" +
-                        "&order=synced_at.desc"
-                val pendingPushConnection = open(pendingPushUrl, "GET", token)
-                val pendingPushResponse = readResponse(pendingPushConnection)
-                if (pendingPushConnection.responseCode !in 200..299) {
-                    error(extractError(pendingPushResponse, "Could not load pending Admin Pushes."))
-                }
-
-                val pendingPushRows = JSONArray(pendingPushResponse)
-                // Store overview counts pending Admin Push updates, not unique PLUs.
-                // Example: 45 pushed updates for 5 PLUs = 45 PENDING here.
+                // Pending is a SKU-level operational count, not the sum of
+                // historical Admin Push item counts. Repeated pushes of the same
+                // SKU must never inflate the store's pending number.
                 val pendingByStore = pendingPluByStore
                     .mapValues { it.value.size }
                     .toMutableMap()
-
-                for (i in 0 until pendingPushRows.length()) {
-                    val row = pendingPushRows.getJSONObject(i)
-                    val code = row.optString("store_code")
-                    if (code.isBlank()) continue
-                    pendingByStore[code] =
-                        (pendingByStore[code] ?: 0) + row.optInt("item_count", 0)
-                }
 
                 val uploadUrl =
                     "$baseUrl/rest/v1/admin_scale_upload_report" +
