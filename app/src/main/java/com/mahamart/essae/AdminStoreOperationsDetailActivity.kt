@@ -302,7 +302,7 @@ private fun PushCard(row: SupabaseAuth.PricePushRow) {
             Text("Created: " + TimeFormat.ist(row.createdAt), style = MaterialTheme.typography.bodySmall)
             Text("Synced: " + TimeFormat.ist(row.syncedAt), style = MaterialTheme.typography.bodySmall)
             Text(
-                "Uploaded: " + (row.uploadedAt?.let { formatIst(it) } ?: "Not uploaded"),
+                "Uploaded: " + (row.uploadedAt?.let { TimeFormat.ist(it) } ?: "Not uploaded"),
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -334,7 +334,7 @@ private fun PendingAdminPushCard(row: SupabaseAuth.PendingAdminPushItem) {
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "Pushed: " + formatIst(row.pushedAt),
+                "Pushed: " + TimeFormat.ist(row.pushedAt),
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
