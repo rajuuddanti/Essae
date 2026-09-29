@@ -220,22 +220,6 @@ private fun AdminPushScreen(
             }
         } else {
             val plu = selectedPlu!!
-            val repeatedMasterPrices = storePrices
-                .mapNotNull { it.currentPrice }
-                .groupingBy { it }
-                .eachCount()
-                .filterValues { it >= 2 }
-
-            // A Master Price exists only when one price is shared by
-            // at least two stores. If multiple prices tie, there is
-            // no single unambiguous Master Price.
-            val masterPrice =
-                if (repeatedMasterPrices.size == 1) {
-                    repeatedMasterPrices.keys.first()
-                } else {
-                    null
-                }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -257,10 +241,7 @@ private fun AdminPushScreen(
             )
 
             Text(
-                "Master price: " + (
-                    masterPrice?.let { "₹" + String.format("%.2f", it) }
-                        ?: "—"
-                    ),
+                "Store Master Price is shown per store below.",
                 style = MaterialTheme.typography.bodySmall
             )
 
@@ -501,31 +482,24 @@ private fun buildLastChangedText(
     lastUploadSource: String?
 ): String {
     val confirmed = TimeFormat.istLastChanged(lastUploadedAt)
+    val sourceSuffix =
+        if (lastUploadSource.equals("MANUAL", ignoreCase = true)) " M" else ""
 
     if (pendingPushedAt.isNullOrBlank()) {
-        return if (lastUploadSource.equals("MANUAL", ignoreCase = true)) {
-            "LC: $confirmed M"
-        } else {
-            "LC: $confirmed"
-        }
+        return "LC: $confirmed$sourceSuffix"
     }
 
-    val pushedDate = TimeFormat.istDayMonth(pendingPushedAt)
+    val pendingDate = TimeFormat.ist(pendingPushedAt)
     val pendingPrice = pendingPushedPrice?.let {
-        String.format("%.0f", it)
+        "₹" + String.format("%.2f", it)
     }
 
-    return if (pushedDate == null) {
-        if (pendingPrice == null) {
-            "LC: $confirmed*"
-        } else {
-            "LC: $confirmed*($pendingPrice)"
-        }
-    } else {
-        if (pendingPrice == null) {
-            "LC: $confirmed ($pushedDate)*"
-        } else {
-            "LC: $confirmed ($pushedDate)*($pendingPrice)"
+    return buildString {
+        append("LC: $confirmed$sourceSuffix")
+        if (pendingDate != null || pendingPrice != null) {
+            append(" • PENDING")
+            if (pendingPrice != null) append(": $pendingPrice")
+            if (pendingDate != null) append(" • $pendingDate")
         }
     }
 }
