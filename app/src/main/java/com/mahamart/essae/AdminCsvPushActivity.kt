@@ -241,6 +241,7 @@ class AdminCsvPushActivity : ComponentActivity() {
 
         val pluIndex = header.indexOfFirst { it in setOf("PLU_NO", "PLUNO", "PLU", "NUMBER") }
         val nameIndex = header.indexOfFirst { it in setOf("PLU_NAME", "PLUNAME", "NAME", "PRODUCT_NAME", "PRODUCT") }
+        val codeIndex = header.indexOfFirst { it in setOf("PLU_CODE", "PLUCODE", "CODE", "BARCODE") }
         val priceIndex = header.indexOfFirst { it in setOf("PRICE", "NEW_PRICE", "UNIT_PRICE", "UNITPRICE") }
 
         require(pluIndex >= 0) { "CSV needs a PLU_NO column." }
@@ -259,7 +260,13 @@ class AdminCsvPushActivity : ComponentActivity() {
             require(seen.add(plu)) { "Duplicate PLU " + plu + " at CSV line " + lineNo + "." }
 
             val name = if (nameIndex >= 0) row.getOrNull(nameIndex)?.trim().orEmpty() else ""
-            result += SupabaseAuth.AdminPriceItem(plu, name, price)
+            val code = if (codeIndex >= 0) row.getOrNull(codeIndex)?.trim().orEmpty() else ""
+            result += SupabaseAuth.AdminPriceItem(
+                pluNo = plu,
+                pluName = name,
+                newPrice = price,
+                pluCode = code
+            )
         }
 
         require(result.isNotEmpty()) { "CSV contains no price rows." }
