@@ -1,3 +1,9 @@
+-- Remove the obsolete pre-token overload. The Android app uses the token-secured
+-- six-argument RPC; keeping two overloads makes PostgREST RPC resolution risky.
+drop function if exists public.complete_scale_upload(
+    uuid, text, text, text, jsonb
+);
+
 -- Fix post-scale-upload master synchronization and duplicate Admin Push completion.
 -- Applies to all stores; the Vidya Nagar 133-SKU case is repaired by the
 -- backfill at the end of this migration.
