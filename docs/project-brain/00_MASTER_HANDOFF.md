@@ -255,3 +255,15 @@ Then build/run again from Android Studio or USB device.
 - Duplicate PLU rows inside a CSV remain a CSV validation error; same-price rows are valid and simply require no action.
 - All manager/admin-facing timestamps should display in Asia/Kolkata (IST, UTC+05:30); stored PostgreSQL `timestamptz` values remain absolute instants.
 - See `26_IST_CSV_DUPLICATE_PREVENTION_2026-09-29.md` for the detailed checkpoint and implementation order.
+
+
+## 22. Same-price prevention implementation — 2026-09-29
+- Branch: `feature/ist-csv-duplicate-prevention`.
+- Admin Push/CSV-to-store rows are compared per store + PLU against `store_price_master.master_price`.
+- SAME rows do not enter RED/PENDING scale-upload workflow.
+- Changed rows continue through the existing physical scale upload workflow.
+- SAME results are recorded as `NO_CHANGE` for manager audit visibility.
+- The reconciliation report can show `NO CHANGE`.
+- Android Store Sync ACKs an Admin Push even when every row in that update is SAME.
+- Central Android timestamp formatting uses Asia/Kolkata (IST).
+- Live Supabase migrations for this behavior are applied.
