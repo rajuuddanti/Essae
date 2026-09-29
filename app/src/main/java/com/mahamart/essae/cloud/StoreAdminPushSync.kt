@@ -112,7 +112,13 @@ class StoreAdminPushSync(private val context: Context) {
                 val itemList = items
                     .filter { it.has("plu_no") && it.has("new_price") }
 
-                if (itemList.isEmpty()) continue
+                // The backend filters SAME-price rows against the store's
+                // Store Master Price. An empty list means this Admin Push
+                // was valid but requires no local/scale action.
+                if (itemList.isEmpty()) {
+                    updateIds += updateId
+                    continue
+                }
 
                 for (item in itemList) {
                     val pluNo = item.optInt("plu_no", -1)
