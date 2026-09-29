@@ -121,7 +121,15 @@ class AdminCsvPushActivity : ComponentActivity() {
                 LazyColumn(modifier = Modifier.fillMaxWidth().height(190.dp)) {
                     items(items, key = { it.pluNo }) { item ->
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Text(item.pluNo.toString() + "  " + item.pluName, modifier = Modifier.weight(1f), maxLines = 1)
+                            Text(
+                                if (item.pluCode.isBlank()) {
+                                    item.pluNo.toString() + "  " + item.pluName
+                                } else {
+                                    item.pluNo.toString() + "  " + item.pluCode + "  " + item.pluName
+                                },
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1
+                            )
                             Text("₹" + String.format("%.2f", item.newPrice))
                         }
                     }
