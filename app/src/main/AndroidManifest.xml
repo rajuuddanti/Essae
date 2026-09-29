@@ -11,50 +11,24 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">
 
-        <service
-            android:name=".cloud.MahaMartFirebaseMessagingService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
+        <service android:name=".cloud.MahaMartFirebaseMessagingService" android:exported="false">
+            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
         </service>
 
-        <activity
-            android:name=".LabelDesignActivity"
-            android:exported="false" />
+        <activity android:name=".LabelDesignActivity" android:exported="false" />
+        <activity android:name=".AdminActivity" android:exported="false" />
+        <activity android:name=".AdminPushActivity" android:exported="false" />
+        <activity android:name=".AdminCsvPushActivity" android:exported="false" />
+        <activity android:name=".StoreDeviceRegistrationActivity" android:exported="false" />
+        <activity android:name=".AdminStoreDeviceMappingActivity" android:exported="false" />
+        <activity android:name=".AdminOperationsActivity" android:exported="false" />
+        <activity android:name=".AdminStoreOperationsDetailActivity" android:exported="false" />
 
-        <activity
-            android:name=".AdminActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".AdminPushActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".StoreDeviceRegistrationActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".AdminStoreDeviceMappingActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".AdminOperationsActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".AdminStoreOperationsDetailActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
     </application>
 </manifest>
