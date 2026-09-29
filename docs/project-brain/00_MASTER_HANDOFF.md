@@ -245,3 +245,13 @@ Then build/run again from Android Studio or USB device.
 - CSV preview displays all imported SKUs inside a scrollable fixed-height preview.
 - Admin Dashboard is vertically scrollable so lower controls are not clipped on shorter screens.
 - See `25_ADMIN_CSV_PUSH_CURRENT_2026-09-29.md` for the detailed checkpoint.
+
+
+## 21. IST + same-price CSV/Admin Push checkpoint — 2026-09-29
+- Dedicated testing branch: `feature/ist-csv-duplicate-prevention`.
+- Full CSV/Admin Push operations must not create RED/PENDING for a SKU when the pushed price already equals that store's Store Master Price.
+- Changed prices remain RED/PENDING until physical Essae upload succeeds.
+- SAME/NO CHANGE operations remain auditable so managers can see what changed and what did not.
+- Duplicate PLU rows inside a CSV remain a CSV validation error; same-price rows are valid and simply require no action.
+- All manager/admin-facing timestamps should display in Asia/Kolkata (IST, UTC+05:30); stored PostgreSQL `timestamptz` values remain absolute instants.
+- See `26_IST_CSV_DUPLICATE_PREVENTION_2026-09-29.md` for the detailed checkpoint and implementation order.
