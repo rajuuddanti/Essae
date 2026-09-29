@@ -252,7 +252,14 @@ class MainVm(
 
     fun importCsv(text: String) {
 
-        val imported = CsvImporter.parse(text)
+        val imported = try {
+            CsvImporter.parse(text)
+        } catch (e: Exception) {
+            val message = e.message?.takeIf { it.isNotBlank() } ?: "Invalid CSV file"
+            csvStatus = "CSV import failed: " + message
+            status = "CSV ERROR"
+            return
+        }
 
         if (imported.isEmpty()) {
             csvStatus =
