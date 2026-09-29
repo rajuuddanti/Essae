@@ -171,6 +171,7 @@ class SupabaseAuth(context: Context) {
                     JSONObject()
                         .put("plu_no", item.pluNo)
                         .put("plu_name", item.pluName)
+                        .put("plu_code", item.pluCode)
                         .put("new_price", item.newPrice)
                 )
             }
@@ -570,6 +571,7 @@ class SupabaseAuth(context: Context) {
                     AdminPriceItem(
                         pluNo = item.optInt("plu_no", 0),
                         pluName = item.optString("plu_name").ifBlank { "Unnamed PLU" },
+                        pluCode = item.optString("plu_code").trim(),
                         newPrice = item.optDouble("new_price", 0.0)
                     )
                 )
@@ -620,7 +622,8 @@ class SupabaseAuth(context: Context) {
     data class AdminPriceItem(
         val pluNo: Int,
         val pluName: String,
-        val newPrice: Double
+        val newPrice: Double,
+        val pluCode: String = ""
     )
 
     data class StoreOperationsDetail(
