@@ -135,23 +135,18 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           message: {
             token: device.fcm_token,
-            notification: {
-              title: "New Admin Price Update",
-              body: update.item_count === 1
-                ? "A new price update was received. Please upload it to the scale."
-                : update.item_count + " new price updates were received. Please review and upload them to the scale.",
-            },
-            data: {
-              type: "ADMIN_PRICE_UPDATE",
-              update_id: updateId,
-              price_count: String(update.item_count),
-            },
-            android: {
-              priority: "HIGH",
-              notification: {
-                channel_id: "admin_price_updates",
-              },
-            },
+            // Data-only + HIGH priority so the Android FirebaseMessagingService
+          // handles the same local notification in foreground and background.
+          // This avoids the background/foreground split of notification+data
+          // messages and keeps one notification implementation on the device.
+          data: {
+            type: "ADMIN_PRICE_UPDATE",
+            update_id: updateId,
+            price_count: String(update.item_count),
+          },
+          android: {
+            priority: "HIGH",
+          },
           },
         }),
       });
