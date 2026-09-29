@@ -119,14 +119,11 @@ class AdminCsvPushActivity : ComponentActivity() {
             if (items.isNotEmpty()) {
                 Text("CSV PREVIEW", style = MaterialTheme.typography.labelLarge)
                 LazyColumn(modifier = Modifier.fillMaxWidth().height(190.dp)) {
-                    items(items.take(20), key = { it.pluNo }) { item ->
+                    items(items, key = { it.pluNo }) { item ->
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Text(item.pluNo.toString() + "  " + item.pluName, modifier = Modifier.weight(1f), maxLines = 1)
                             Text("₹" + String.format("%.2f", item.newPrice))
                         }
-                    }
-                    if (items.size > 20) item {
-                        Text("...and " + (items.size - 20) + " more SKUs")
                     }
                 }
             }
