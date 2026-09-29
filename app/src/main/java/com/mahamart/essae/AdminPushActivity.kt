@@ -40,9 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.mahamart.essae.util.TimeFormat
 import com.mahamart.essae.cloud.SupabaseAuth
 import com.mahamart.essae.data.AppDatabase
 import com.mahamart.essae.data.Plu
@@ -501,7 +499,7 @@ private fun buildLastChangedText(
     pendingPushedPrice: Double?,
     lastUploadSource: String?
 ): String {
-    val confirmed = formatIstLastChanged(lastUploadedAt)
+    val confirmed = TimeFormat.istLastChanged(lastUploadedAt)
 
     if (pendingPushedAt.isNullOrBlank()) {
         return if (lastUploadSource.equals("MANUAL", ignoreCase = true)) {
@@ -511,7 +509,7 @@ private fun buildLastChangedText(
         }
     }
 
-    val pushedDate = formatIstDayMonth(pendingPushedAt)
+    val pushedDate = TimeFormat.istDayMonth(pendingPushedAt)
     val pendingPrice = pendingPushedPrice?.let {
         String.format("%.0f", it)
     }
