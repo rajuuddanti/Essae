@@ -30,9 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mahamart.essae.cloud.SupabaseAuth
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.mahamart.essae.util.TimeFormat
 
 class AdminOperationsActivity : ComponentActivity() {
     private lateinit var auth: SupabaseAuth
@@ -235,11 +233,11 @@ private fun StoreOperationsCard(
             }
 
             Text(
-                "Last seen: ${formatIst(row.lastSeenAt)}",
+                "Last seen: ${TimeFormat.ist(row.lastSeenAt)}",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "Last completed upload: ${formatIst(row.lastUploadAt)}",
+                "Last completed upload: ${TimeFormat.ist(row.lastUploadAt)}",
                 style = MaterialTheme.typography.bodySmall
             )
             OutlinedButton(
