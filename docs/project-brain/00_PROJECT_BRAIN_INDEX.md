@@ -19,6 +19,7 @@ This directory is the durable handoff for the MahaMart / Essae Android scale-man
 14. 23_STORE_OPERATIONS_CURRENT_2026-09-28.md
 15. 24_LABEL_DESIGN_STORE_NAME_2026-09-28.md
 16. 25_ADMIN_CSV_PUSH_CURRENT_2026-09-29.md
+17. 26_IST_CSV_DUPLICATE_PREVENTION_2026-09-29.md
 
 ## Latest checkpoint
 For the current end-to-end behavior and the exact next testing sequence, 19_STABLE_CHECKPOINT_2026-09-26.md is authoritative.
