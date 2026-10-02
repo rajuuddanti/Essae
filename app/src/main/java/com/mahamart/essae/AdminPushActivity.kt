@@ -335,10 +335,11 @@ private fun AdminPushScreen(
 
                                 Text(
                                     buildLastChangedText(
-                                        store.lastUploadedAt,
+                                        store.scaleLastUploadedAt ?: store.lastUploadedAt,
                                         store.pendingPushedAt,
                                         store.pendingPushedPrice,
-                                        store.lastUploadSource
+                                        store.lastUploadSource,
+                                        store.scalePrice
                                     ),
                                     fontSize = 10.sp
                                 )
@@ -479,13 +480,17 @@ private fun buildLastChangedText(
     lastUploadedAt: String?,
     pendingPushedAt: String?,
     pendingPushedPrice: Double?,
-    lastUploadSource: String?
+    lastUploadSource: String?,
+    scalePrice: Double?
 ): String {
     val confirmed = TimeFormat.istLastChanged(lastUploadedAt)
     val sourceSuffix =
         if (lastUploadSource.equals("MANUAL", ignoreCase = true)) " M" else ""
+    val pendingAlreadyOnScale = pendingPushedPrice != null &&
+        scalePrice != null &&
+        kotlin.math.abs(scalePrice - pendingPushedPrice) < 0.005
 
-    if (pendingPushedAt.isNullOrBlank()) {
+    if (pendingPushedAt.isNullOrBlank() || pendingAlreadyOnScale) {
         return "LC: $confirmed$sourceSuffix"
     }
 
@@ -496,7 +501,7 @@ private fun buildLastChangedText(
 
     return buildString {
         append("LC: $confirmed$sourceSuffix")
-        append(" • PENDING")
+        append("\nPENDING")
         if (pendingPrice != null) append(": $pendingPrice")
         if (pendingDate != "—") append(" • $pendingDate")
     }
