@@ -1628,78 +1628,62 @@ private fun ScaleSectionTitle(
 
 
 /*
- * Technical status panel.
+ * Main screen status panel using the same solid status colors as Label Design.
  */
 @Composable
 private fun ControlStatus(
     text: String
 ) {
-    val statusColor =
+    val backgroundColor =
         when {
-            text == "CONNECTED" -> Color(0xFF16803A)
-            text == "CONNECTION ERROR" -> Color(0xFFD00019)
+            text.contains("ERROR", ignoreCase = true) ||
+                text.contains("FAILED", ignoreCase = true) ->
+                Color(0xFFD00019)
+
+            text.equals("CONNECTED", ignoreCase = true) ||
+                text.contains("UPLOAD COMPLETE", ignoreCase = true) ->
+                Color(0xFF16803A)
+
             else -> Color.Black
         }
 
     val displayText =
-        when {
-            text == "TESTING" -> "TESTING..."
-            else -> text
-        }
+        if (text == "TESTING") "TESTING..." else text
 
     Card(
-        modifier =
-            Modifier.fillMaxWidth(),
-
-        colors =
-            CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-
-        border =
-            BorderStroke(
-                1.dp,
-                statusColor
-            ),
-
-        shape =
-            RoundedCornerShape(6.dp)
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        shape = RoundedCornerShape(7.dp)
     ) {
-
         Row(
-            modifier =
-                Modifier.padding(
-                    horizontal = 10.dp,
-                    vertical = 9.dp
-                ),
-
-            horizontalArrangement =
-                Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-
             Text(
-                "STATUS",
-                style =
-                    MaterialTheme
-                        .typography
-                        .labelSmall,
-                color =
-                    Color.Black,
-                fontWeight =
-                    FontWeight.Bold
+                "●",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
             )
 
-            Text(
-                displayText,
-                style =
-                    MaterialTheme
-                        .typography
-                        .bodySmall,
-                color =
-                    statusColor,
-                fontWeight =
-                    FontWeight.Bold
-            )
+            Column {
+                Text(
+                    "STATUS",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    displayText,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
