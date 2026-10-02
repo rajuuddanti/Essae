@@ -392,7 +392,7 @@ class SupabaseAuth(context: Context) {
 
                 val pendingUrl =
                     "$baseUrl/rest/v1/admin_price_change_report" +
-                        "?select=store_code,plu_no,changed_at" +
+                        "?select=store_code,plu_no,new_price,changed_at" +
                         "&status=eq.PENDING" +
                         "&order=changed_at.desc"
                 val pendingConnection = open(pendingUrl, "GET", token)
@@ -401,29 +401,26 @@ class SupabaseAuth(context: Context) {
                     error(extractError(pendingResponse, "Could not load pending price changes."))
                 }
 
+                // Keep the latest candidate price per store/SKU across audit and
+                // Admin Push history. Reconcile against physical scale price so
+                // stale SYNCED or PENDING report rows don't inflate operations.
+                val pendingPriceByStore = mutableMapOf<String, MutableMap<Int, Pair<String, Double>>>()
                 val pendingRows = JSONArray(pendingResponse)
-                val pendingPluByStore = mutableMapOf<String, MutableSet<Int>>()
                 for (i in 0 until pendingRows.length()) {
                     val row = pendingRows.getJSONObject(i)
                     val code = row.optString("store_code")
-                    if (code.isBlank()) continue
-
                     val pluNo = row.optInt("plu_no", 0)
-                    if (pluNo > 0) {
-                        pendingPluByStore.getOrPut(code) { mutableSetOf() }.add(pluNo)
-                    }
+                    if (code.isBlank() || pluNo <= 0 || row.isNull("new_price")) continue
+                    val at = row.optString("changed_at")
+                    val price = row.optDouble("new_price")
+                    val byPlu = pendingPriceByStore.getOrPut(code) { mutableMapOf() }
+                    val previous = byPlu[pluNo]
+                    if (previous == null || at > previous.first) byPlu[pluNo] = at to price
                 }
-
-                // Pending is a unique SKU-level operational count. Merge
-                // unresolved Admin Push items with price-change audits by PLU,
-                // so repeated pushes of the same SKU never inflate the count.
-                val pendingByStorePlu = pendingPluByStore
-                    .mapValues { it.value.toMutableSet() }
-                    .toMutableMap()
 
                 val pendingPushUrl =
                     "$baseUrl/rest/v1/admin_price_push_report" +
-                        "?select=store_code,items,status,uploaded_at" +
+                        "?select=store_code,items,status,uploaded_at,synced_at,created_at" +
                         "&status=eq.SYNCED" +
                         "&uploaded_at=is.null" +
                         "&order=synced_at.desc"
@@ -438,18 +435,38 @@ class SupabaseAuth(context: Context) {
                     val row = pendingPushRows.getJSONObject(i)
                     val code = row.optString("store_code")
                     if (code.isBlank()) continue
-
+                    val pushedAt = row.optString("synced_at").ifBlank {
+                        row.optString("created_at")
+                    }
                     val items = row.optJSONArray("items") ?: continue
-                    val set = pendingByStorePlu.getOrPut(code) { mutableSetOf() }
+                    val byPlu = pendingPriceByStore.getOrPut(code) { mutableMapOf() }
                     for (j in 0 until items.length()) {
-                        val pluNo = items.optJSONObject(j)?.optInt("plu_no", 0) ?: 0
-                        if (pluNo > 0) set += pluNo
+                        val item = items.optJSONObject(j) ?: continue
+                        val pluNo = item.optInt("plu_no", 0)
+                        if (pluNo <= 0 || item.isNull("new_price")) continue
+                        val price = item.optDouble("new_price")
+                        val previous = byPlu[pluNo]
+                        if (previous == null || pushedAt > previous.first) {
+                            byPlu[pluNo] = pushedAt to price
+                        }
                     }
                 }
 
-                val pendingByStore = pendingByStorePlu
-                    .mapValues { it.value.size }
-                    .toMutableMap()
+                val priceCache = mutableMapOf<Int, List<StorePluPrice>>()
+                val pendingByStore = mutableMapOf<String, Int>()
+                for ((code, candidates) in pendingPriceByStore) {
+                    var count = 0
+                    for ((pluNo, candidate) in candidates) {
+                        val prices = priceCache.getOrPut(pluNo) {
+                            getStorePluPrices(pluNo).getOrElse { emptyList() }
+                        }
+                        val physicalPrice = prices.firstOrNull { it.storeCode == code }?.scalePrice
+                        val alreadyOnScale = physicalPrice != null &&
+                            kotlin.math.abs(physicalPrice - candidate.second) < 0.005
+                        if (!alreadyOnScale) count++
+                    }
+                    pendingByStore[code] = count
+                }
 
                 val uploadUrl =
                     "$baseUrl/rest/v1/admin_scale_upload_report" +
