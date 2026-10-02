@@ -1,5 +1,7 @@
 package com.mahamart.essae
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import androidx.compose.ui.unit.dp
 import com.mahamart.essae.cloud.SupabaseAuth
 
@@ -126,6 +131,8 @@ fun AdminDeviceRegistration(
                             style = MaterialTheme.typography.headlineSmall
                         )
                         Spacer(Modifier.height(6.dp))
+                        RegistrationQrCode(registrationCode)
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             "Valid for 60 minutes and usable once.",
                             style = MaterialTheme.typography.bodySmall
@@ -220,4 +227,21 @@ private fun StorePickerDialog(
         },
         confirmButton = {}
     )
+}
+
+
+@Composable
+private fun RegistrationQrCode(registrationCode: String) {
+    val bitmap = remember(registrationCode) {
+        runCatching {
+            val matrix = QRCodeWriter().encode("MAHAMART_DEVICE_REG|" + registrationCode, BarcodeFormat.QR_CODE, 480, 480)
+            Bitmap.createBitmap(480, 480, Bitmap.Config.RGB_565).apply {
+                for (x in 0 until 480) for (y in 0 until 480) {
+                    setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                }
+            }
+        }.getOrNull()
+    }
+    if (bitmap != null) Image(bitmap = bitmap.asImageBitmap(), contentDescription = "Registration QR code", modifier = Modifier.fillMaxWidth(0.72f))
+    else Text("Could not create QR code.", color = MaterialTheme.colorScheme.error)
 }
