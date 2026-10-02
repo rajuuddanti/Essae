@@ -335,7 +335,7 @@ class SupabaseAuth(context: Context) {
                             .getOrElse { emptyList() }
                             .firstOrNull { it.storeCode == storeCode.trim() }
 
-                        val currentScalePrice = storePrice?.currentPrice
+                        val currentScalePrice = storePrice?.scalePrice
                         // current_price is the effective confirmed Admin/scale price.
                         // The RPC returns Store Master Price when available, otherwise
                         // the latest confirmed scale price.
@@ -352,8 +352,23 @@ class SupabaseAuth(context: Context) {
                 }
 
                 val pendingAdminPluNos = pendingAdminPushes.map { it.pluNo }.toSet()
-                val pendingChanges = changeRows
-                    .filter { it.status == "PENDING" && it.pluNo !in pendingAdminPluNos }
+                val latestPendingChanges = changeRows
+                    .filter { it.status.equals("PENDING", ignoreCase = true) }
+                    .groupBy { it.pluNo }
+                    .mapNotNull { (_, rows) -> rows.maxByOrNull { it.changedAt.orEmpty() } }
+                val pendingChanges = buildList {
+                    for (change in latestPendingChanges) {
+                        if (change.pluNo in pendingAdminPluNos) continue
+                        val storePrice = getStorePluPrices(change.pluNo)
+                            .getOrElse { emptyList() }
+                            .firstOrNull { it.storeCode == storeCode.trim() }
+                        val physicalPrice = storePrice?.scalePrice
+                        if (physicalPrice != null &&
+                            kotlin.math.abs(physicalPrice - change.newPrice) < 0.005
+                        ) continue
+                        add(change)
+                    }
+                }
 
                 StoreOperationsDetail(
                     storeCode = storeCode,
