@@ -390,7 +390,7 @@ class MainVm(
                 "Uploading ${all.size} PLUs directly to " +
                         "$host:$port ..."
 
-            transport.uploadSelectedDirect(
+            status = transport.uploadSelectedDirect(
                 host,
                 portNumber,
                 all
