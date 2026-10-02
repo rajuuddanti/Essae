@@ -457,8 +457,10 @@ class SupabaseAuth(context: Context) {
                 for ((code, candidates) in pendingPriceByStore) {
                     var count = 0
                     for ((pluNo, candidate) in candidates) {
-                        val prices = priceCache.getOrPut(pluNo) {
-                            getStorePluPrices(pluNo).getOrElse { emptyList() }
+                        val prices = priceCache[pluNo] ?: run {
+                            val fetched = getStorePluPrices(pluNo).getOrElse { emptyList() }
+                            priceCache[pluNo] = fetched
+                            fetched
                         }
                         val physicalPrice = prices.firstOrNull { it.storeCode == code }?.scalePrice
                         val alreadyOnScale = physicalPrice != null &&
