@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import com.google.firebase.messaging.FirebaseMessaging
-import com.google.android.gms.mlkit.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
