@@ -193,7 +193,7 @@ fun LabelDesignScreen() {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            "Enter the exact text to print on both label designs.",
+                            "Enter the exact text to print on all label designs.",
                             style = MaterialTheme.typography.bodySmall
                         )
                         OutlinedTextField(
@@ -265,7 +265,7 @@ fun LabelDesignScreen() {
                             status = if (LabelDesignStore.hasFssai(context)) {
                                 "LABEL NAME + FSSAI SAVED"
                             } else {
-                                "LABEL NAME SAVED FOR BOTH DESIGNS"
+                                "LABEL NAME SAVED FOR ALL DESIGNS"
                             }
                             connectionState = ConnectionState.READY
                             showLabelStoreNameDialog = false
@@ -638,7 +638,7 @@ fun LabelDesignScreen() {
 
                 LabelSectionTitle(
                     "LABEL DESIGN",
-                    "Choose one of the two preloaded designs"
+                    "Choose one of the three preloaded designs"
                 )
 
                 TabRow(
