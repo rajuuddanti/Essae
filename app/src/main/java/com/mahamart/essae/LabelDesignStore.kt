@@ -25,6 +25,11 @@ object LabelDesignStore {
             title = "Weight + ₹ Price",
             bundledAsset = "Weight + ₹ Price.LFT",
             localFile = "weight_price.LFT"
+        ),
+        WEIGHT_PRICE_2(
+            title = "Weight + ₹ Price 2",
+            bundledAsset = "Weight + ₹ Price 2.LFT",
+            localFile = "weight_price_2.LFT"
         )
     }
 
@@ -184,6 +189,7 @@ object LabelDesignStore {
     fun displayFileName(slot: Slot): String = when (slot) {
         Slot.WEIGHT_ONLY -> "Weight Only.LFT"
         Slot.WEIGHT_PRICE -> "Weight + ₹ Price.LFT"
+        Slot.WEIGHT_PRICE_2 -> "Weight + ₹ Price 2.LFT"
     }
 
     private fun replaceStoreNameSizing(
