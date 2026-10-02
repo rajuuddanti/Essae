@@ -136,7 +136,11 @@ class SupabaseAuth(context: Context) {
                                 storeName = row.optString("store_name"),
                                 currentPrice = if (row.isNull("current_price")) null
                                 else row.optDouble("current_price"),
+                                scalePrice = if (row.isNull("scale_price")) null
+                                else row.optDouble("scale_price"),
                                 lastUploadedAt = row.optString("last_uploaded_at")
+                                    .ifBlank { null },
+                                scaleLastUploadedAt = row.optString("scale_last_uploaded_at")
                                     .ifBlank { null },
                                 pendingPushedAt = row.optString("pending_pushed_at")
                                     .ifBlank { null },
@@ -649,7 +653,9 @@ class SupabaseAuth(context: Context) {
         val storeCode: String,
         val storeName: String,
         val currentPrice: Double?,
+        val scalePrice: Double?,
         val lastUploadedAt: String?,
+        val scaleLastUploadedAt: String?,
         val pendingPushedAt: String?,
         val pendingPushedPrice: Double?,
         val lastUploadSource: String?,
