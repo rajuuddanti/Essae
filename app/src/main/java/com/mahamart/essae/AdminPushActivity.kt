@@ -501,7 +501,7 @@ private fun buildLastChangedText(
 
     return buildString {
         append("LC: $confirmed$sourceSuffix")
-        append("\nPENDING")
+        append("\nP:")
         if (pendingPrice != null) append(": $pendingPrice")
         if (pendingDate != "—") append(" • $pendingDate")
     }
