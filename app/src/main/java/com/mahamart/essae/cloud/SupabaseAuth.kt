@@ -353,9 +353,11 @@ class SupabaseAuth(context: Context) {
 
                 val pendingAdminPluNos = pendingAdminPushes.map { it.pluNo }.toSet()
                 val latestPendingChanges = changeRows
-                    .filter { it.status.equals("PENDING", ignoreCase = true) }
                     .groupBy { it.pluNo }
-                    .mapNotNull { (_, rows) -> rows.maxByOrNull { it.changedAt.orEmpty() } }
+                    .mapNotNull { (_, rows) ->
+                        rows.maxByOrNull { it.changedAt.orEmpty() }
+                            ?.takeIf { it.status.equals("PENDING", ignoreCase = true) }
+                    }
                 val pendingChanges = buildList {
                     for (change in latestPendingChanges) {
                         if (change.pluNo in pendingAdminPluNos) continue
