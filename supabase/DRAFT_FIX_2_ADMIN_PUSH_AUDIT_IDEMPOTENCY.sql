@@ -141,14 +141,26 @@ begin
             continue;
         end if;
 
-        select id
-          into existing_id
-        from public.store_price_change_log
-        where device_id = trim(p_device_id)
-          and plu_no = v_plu_no
-          and status = 'PENDING'
-        order by changed_at desc
-        limit 1;
+        if v_update_id is not null then
+            -- Keep one immutable audit identity per Admin Push/SKU.
+            -- Supersede an older pending value instead of overwriting its key.
+            update public.store_price_change_log
+            set status = 'SUPERSEDED',
+                reverted_at = coalesce(reverted_at, now())
+            where device_id = trim(p_device_id)
+              and plu_no = v_plu_no
+              and status = 'PENDING';
+            existing_id := null;
+        else
+            select id
+              into existing_id
+            from public.store_price_change_log
+            where device_id = trim(p_device_id)
+              and plu_no = v_plu_no
+              and status = 'PENDING'
+            order by changed_at desc
+            limit 1;
+        end if;
 
         if existing_id is null then
             insert into public.store_price_change_log (
