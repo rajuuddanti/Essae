@@ -11,6 +11,9 @@ interface PriceChangeAuditDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: PriceChangeAudit): Long
 
+    @Query("SELECT EXISTS(SELECT 1 FROM price_change_audit WHERE adminUpdateId = :updateId AND pluNo = :pluNo)")
+    suspend fun hasAdminPushAudit(updateId: String, pluNo: Int): Boolean
+
     @Query("SELECT * FROM price_change_audit ORDER BY changedAt DESC")
     fun observeAll(): Flow<List<PriceChangeAudit>>
 
