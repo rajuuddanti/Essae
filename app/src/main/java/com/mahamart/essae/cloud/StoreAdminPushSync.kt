@@ -148,10 +148,7 @@ class StoreAdminPushSync(private val context: Context) {
 
                     upsert(plu)
 
-                    if (
-                        (existing == null || existing.unitPrice != newPrice) &&
-                        !hasAdminAudit(updateId, pluNo)
-                    ) {
+                    if (!hasAdminAudit(updateId, pluNo)) {
                         insertAudit(
                             PriceChangeAudit(
                                 adminUpdateId = updateId,
