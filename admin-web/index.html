@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>MahaMart Scale Manager — Web Console</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#172033;background:#f4f6fa;font-synthesis:none}*{box-sizing:border-box}body{margin:0}.shell{display:flex;min-height:100vh}.side{width:248px;background:#101827;color:#e8edf6;padding:24px 15px;display:flex;flex-direction:column;gap:26px}.brand{padding:3px 12px;font-size:16px;font-weight:750;letter-spacing:.2px}.brand small{display:block;color:#96a3b8;font-size:11px;font-weight:500;margin-top:5px}.nav{display:grid;gap:6px}.nav button{border:0;background:transparent;color:#b7c2d3;text-align:left;padding:12px;border-radius:9px;font:inherit;cursor:pointer}.nav button.active,.nav button:hover{background:#243149;color:white}.nav button:disabled{opacity:.36;cursor:not-allowed}.sidefoot{margin-top:auto;padding:12px;color:#8d9bb1;font-size:11px;line-height:1.5}.main{flex:1;min-width:0}.top{height:72px;background:white;border-bottom:1px solid #e7eaf0;display:flex;align-items:center;justify-content:space-between;padding:0 30px}.top strong{font-size:14px}.tag{font-size:11px;color:#895b0b;background:#fff4d9;border:1px solid #f3dfaa;padding:6px 9px;border-radius:20px;font-weight:650}.content{padding:28px 30px;max-width:1450px;margin:auto}.heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px}.heading h1{margin:0;font-size:24px;letter-spacing:-.5px}.heading p{margin:7px 0 0;color:#718096;font-size:13px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}.card,.panel{background:white;border:1px solid #e8ebf1;border-radius:12px;padding:18px}.metric-label{font-size:12px;color:#738095}.metric{font-size:27px;font-weight:750;margin-top:10px;letter-spacing:-.7px}.muted{font-size:11px;color:#94a0b1;margin-top:5px}.panel{padding:0;overflow:hidden}.panelhead{padding:17px 18px;border-bottom:1px solid #edf0f4;display:flex;align-items:center;justify-content:space-between;gap:12px}.panelhead h2{font-size:14px;margin:0}.tools{display:flex;gap:8px;flex-wrap:wrap}input,select{font:inherit;font-size:12px;padding:9px 11px;border:1px solid #dce2eb;border-radius:8px;background:#fff;color:#293449;outline:none}input:focus,select:focus{border-color:#647db6}button.action{font:inherit;font-size:12px;padding:9px 12px;border-radius:8px;border:1px solid #dce2eb;background:white;color:#26344d;cursor:pointer}button.action:hover{background:#f6f8fb}button.action:disabled{opacity:.45;cursor:not-allowed}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}th{text-align:left;color:#79869a;font-weight:600;background:#fafbfc}th,td{padding:13px 18px;border-bottom:1px solid #eff1f5}tbody tr:last-child td{border-bottom:0}.status{font-size:10px;font-weight:700;border-radius:20px;padding:5px 8px;background:#f0f2f6;color:#667085}.status.ok{background:#e9f7ef;color:#237547}.status.pending{background:#fff4df;color:#98620b}.notice{margin-bottom:17px;padding:12px 14px;background:#f8faff;border:1px solid #dce6fb;border-radius:9px;color:#53647e;font-size:12px;line-height:1.5}.hidden{display:none}.empty{padding:30px;text-align:center;color:#8995a7;font-size:12px}.footnote{padding:12px 18px;color:#8b97a8;font-size:11px;border-top:1px solid #eff1f5}.disabled-card{opacity:.65}.mobile-menu{display:none}
+@media(max-width:900px){.side{width:205px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content{padding:22px 18px}.top{padding:0 18px}}
+@media(max-width:620px){.shell{display:block}.side{width:100%;padding:12px;gap:10px}.brand{padding:4px 8px}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap;padding:9px}.sidefoot{display:none}.top{height:55px}.content{padding:18px 12px}.heading h1{font-size:20px}.grid{gap:9px}.card{padding:13px}.metric{font-size:22px}.panelhead{align-items:flex-start;flex-direction:column}.tools{width:100%}.tools input{flex:1;min-width:130px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+<div class="brand">MAHAMART <small>Scale Manager · Web Console</small></div>
+<nav class="nav" aria-label="Main navigation">
+<button class="active" data-page="overview">▦ &nbsp; Overview</button>
+<button data-page="stores">▤ &nbsp; Stores</button>
+<button data-page="devices">▣ &nbsp; Devices</button>
+<button data-page="history">◷ &nbsp; Admin Push History</button>
+<button data-page="reports">▥ &nbsp; Reports & Export</button>
+<button disabled title="Disabled in this testing phase">⇧ &nbsp; Admin Push · Disabled</button>
+</nav>
+<div class="sidefoot">TESTING BRANCH<br>Read-only UI prototype<br>No production writes</div>
+</aside>
+<main class="main">
+<header class="top"><strong id="topTitle">Overview</strong><span class="tag">PROTOTYPE · SAMPLE DATA</span></header>
+<div class="content">
+<div class="notice"><strong>Preview only:</strong> This screen currently uses sample data and is not connected to Supabase. Admin Push and all price-changing actions are disabled. No production records are changed.</div>
+<section id="overview" class="page">
+<div class="heading"><div><h1>Overview</h1><p>At-a-glance view of scale operations across stores.</p></div></div>
+<div class="grid">
+<div class="card"><div class="metric-label">Active stores</div><div class="metric">17</div><div class="muted">Sample summary</div></div>
+<div class="card"><div class="metric-label">Registered devices</div><div class="metric">14</div><div class="muted">Sample summary</div></div>
+<div class="card"><div class="metric-label">Pending scale updates</div><div class="metric">08</div><div class="muted">Sample summary</div></div>
+<div class="card"><div class="metric-label">Recent uploads</div><div class="metric">126</div><div class="muted">Sample summary</div></div>
+</div>
+<div class="panel"><div class="panelhead"><h2>Recent store activity</h2><span class="muted">Illustrative records</span></div><div class="tablewrap"><table><thead><tr><th>Store</th><th>Device</th><th>Last activity</th><th>Pending</th><th>Status</th></tr></thead><tbody id="overviewRows"></tbody></table></div></div>
+</section>
+<section id="stores" class="page hidden"><div class="heading"><div><h1>Stores</h1><p>Store status and associated scale activity.</p></div></div><div class="panel"><div class="panelhead"><h2>Store directory</h2><div class="tools"><input id="storeSearch" placeholder="Search store or code…" aria-label="Search stores"></div></div><div class="tablewrap"><table><thead><tr><th>Store code</th><th>Store name</th><th>Device</th><th>Last activity</th><th>Status</th></tr></thead><tbody id="storeRows"></tbody></table></div><div class="footnote">Sample directory for layout testing. Live store data is not loaded.</div></div></section>
+<section id="devices" class="page hidden"><div class="heading"><div><h1>Devices</h1><p>Registered device overview. Registration changes are unavailable here.</p></div></div><div class="panel"><div class="panelhead"><h2>Device directory</h2></div><div class="tablewrap"><table><thead><tr><th>Device ID</th><th>Store</th><th>Last seen</th><th>Registration</th></tr></thead><tbody id="deviceRows"></tbody></table></div></div></section>
+<section id="history" class="page hidden"><div class="heading"><div><h1>Admin Push History</h1><p>View-only history preview; no pushes can be initiated from this console.</p></div></div><div class="panel"><div class="panelhead"><h2>Recent price update events</h2><div class="tools"><input id="historySearch" placeholder="Search PLU, store…" aria-label="Search history"><select id="historyStatus" aria-label="Filter by status"><option value="">All statuses</option><option>Uploaded</option><option>Pending</option></select></div></div><div class="tablewrap"><table><thead><tr><th>Date / time</th><th>Store</th><th>PLU</th><th>Price</th><th>Source</th><th>Status</th></tr></thead><tbody id="historyRows"></tbody></table></div></div></section>
+<section id="reports" class="page hidden"><div class="heading"><div><h1>Reports & Export</h1><p>Filter sample audit events and export the visible rows as CSV.</p></div><button id="exportBtn" class="action">↓ &nbsp; Export CSV</button></div><div class="panel"><div class="panelhead"><h2>Price update report</h2><div class="tools"><input id="reportSearch" placeholder="Search store or PLU…" aria-label="Search report"><select id="reportStatus" aria-label="Filter report status"><option value="">All statuses</option><option>Uploaded</option><option>Pending</option></select></div></div><div class="tablewrap"><table><thead><tr><th>Date / time</th><th>Store</th><th>PLU</th><th>Previous price</th><th>New price</th><th>Status</th></tr></thead><tbody id="reportRows"></tbody></table></div><div class="footnote">CSV export contains only the currently visible sample rows. Excel workbook export and live report integration are not implemented yet.</div></div></section>
+</div>
+</main>
+</div>
+<script>
+const stores=[
+["MM001","Dharmaram","ESSAE-001","Today, 10:42 AM","Active"],["MM002","Gharshakurthy","ESSAE-002","Today, 10:31 AM","Active"],["MM003","Choppadandi","ESSAE-003","Today, 09:58 AM","Active"],["MM004","Vidya Nagar","ESSAE-004","Today, 09:44 AM","Active"],["MM005","Mallial","ESSAE-005","Yesterday, 06:20 PM","Active"],["MM006","Pegadapally Old","ESSAE-006","Today, 08:50 AM","Active"],["MM007","Kapuwada","ESSAE-007","Today, 11:02 AM","Active"],["MM008","Pegadapally New","ESSAE-008","Today, 10:12 AM","Active"],["MM009","Burugupally","ESSAE-009","Yesterday, 07:14 PM","Active"],["MM010","Keshavapatnam","ESSAE-010","Today, 10:02 AM","Active"],["MM011","Gangadhara","ESSAE-011","Today, 09:18 AM","Active"],["MM012","Koheda","ESSAE-012","Today, 10:19 AM","Active"],["MM013","Ellanthakunta","ESSAE-013","Today, 09:03 AM","Active"],["MM014","Gangadhara New","ESSAE-014","Yesterday, 08:06 PM","Active"],["MM015","Raikal","ESSAE-015","Today, 11:11 AM","Active"],["MM016","Gopalrao Pet","ESSAE-016","Today, 10:37 AM","Active"],["MM017","Vemulawada","—","Not available","Unregistered"]];
+const events=[
+["2026-10-03 11:11","MM015 · Raikal","100245","₹50","Admin","Uploaded",48,50],
+["2026-10-03 10:42","MM001 · Dharmaram","100118","₹72","Admin","Pending",69,72],
+["2026-10-03 10:37","MM016 · Gopalrao Pet","100309","₹115","Admin","Uploaded",110,115],
+["2026-10-03 10:19","MM012 · Koheda","100422","₹36","Admin","Uploaded",39,36],
+["2026-10-03 09:58","MM003 · Choppadandi","100087","₹84","Admin","Pending",80,84],
+["2026-10-02 19:14","MM009 · Burugupally","100214","₹60","Admin","Uploaded",55,60],
+["2026-10-02 18:06","MM014 · Gangadhara New","100511","₹28","Admin","Uploaded",30,28]
+];
+const el=id=>document.getElementById(id), esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function badge(s){return '<span class="status '+(s==="Uploaded"||s==="Active"||s==="Registered"?"ok":s==="Pending"?"pending":"")+'">'+esc(s)+'</span>'}
+function draw(){el("overviewRows").innerHTML=stores.slice(0,6).map((s,i)=>'<tr><td>'+s[0]+' · '+s[1]+'</td><td>'+s[2]+'</td><td>'+s[3]+'</td><td>'+(i%3===0?2:i%3===1?0:1)+'</td><td>'+badge("Active")+'</td></tr>').join("");
+el("storeRows").innerHTML=stores.filter(s=>(s[0]+" "+s[1]).toLowerCase().includes(el("storeSearch").value.toLowerCase())).map(s=>'<tr><td>'+s[0]+'</td><td>'+s[1]+'</td><td>'+s[2]+'</td><td>'+s[3]+'</td><td>'+badge(s[4])+'</td></tr>').join("");
+el("deviceRows").innerHTML=stores.map(s=>'<tr><td>'+s[2]+'</td><td>'+s[0]+' · '+s[1]+'</td><td>'+s[3]+'</td><td>'+badge(s[2]==="—"?"Unregistered":"Registered")+'</td></tr>').join("");
+const filter=(q,status)=>events.filter(e=>(e[1]+" "+e[2]).toLowerCase().includes(q.toLowerCase())&&(!status||e[5]===status));
+el("historyRows").innerHTML=filter(el("historySearch").value,el("historyStatus").value).map(e=>'<tr><td>'+e[0]+'</td><td>'+e[1]+'</td><td>'+e[2]+'</td><td>'+e[3]+'</td><td>'+e[4]+'</td><td>'+badge(e[5])+'</td></tr>').join("")||'<tr><td colspan="6" class="empty">No matching sample events</td></tr>';
+el("reportRows").innerHTML=filter(el("reportSearch").value,el("reportStatus").value).map(e=>'<tr><td>'+e[0]+'</td><td>'+e[1]+'</td><td>'+e[2]+'</td><td>₹'+e[6]+'</td><td>₹'+e[7]+'</td><td>'+badge(e[5])+'</td></tr>').join("")||'<tr><td colspan="6" class="empty">No matching sample events</td></tr>'}
+document.querySelectorAll(".nav button[data-page]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));el(b.dataset.page).classList.remove("hidden");el("topTitle").textContent=b.textContent.trim().replace(/^\S+\s+/,"")}));
+["storeSearch","historySearch","historyStatus","reportSearch","reportStatus"].forEach(id=>el(id).addEventListener("input",draw));
+el("exportBtn").addEventListener("click",()=>{const rows=events.filter(e=>(e[1]+" "+e[2]).toLowerCase().includes(el("reportSearch").value.toLowerCase())&&(!el("reportStatus").value||e[5]===el("reportStatus").value));const csv=[["Date / time","Store","PLU","Previous price","New price","Status"],...rows.map(e=>[e[0],e[1],e[2],e[6],e[7],e[5]])].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\r\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="mahamart-sample-price-report.csv";a.click();URL.revokeObjectURL(a.href)});
+draw();
+</script>
+</body></html>
