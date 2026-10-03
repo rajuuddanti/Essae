@@ -85,6 +85,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 
 private const val CLEAR_PLU_PIN = "3331"
 
@@ -508,28 +509,38 @@ class MainVm(
         }
     }
 
+    private val adminPushSyncMutex = Mutex()
+
     fun syncAdminPush() {
         viewModelScope.launch(crashSafeHandler) {
-            val result = adminPushSync.pullAndApply(
-                currentPlus = plus.value,
-                upsert = { plu -> dao.upsert(plu) },
-                insertAudit = { audit -> auditDao.insert(audit) }
-            )
+            // Timer, startup, and resume can trigger sync together.
+            // Skip this attempt while another Admin Push sync is active.
+            if (!adminPushSyncMutex.tryLock()) return@launch
 
-            result.onSuccess { pluNumbers ->
-                val pendingPluNumbers =
-                    auditDao.getPendingPriceChangePluNumbers()
+            try {
+                val result = adminPushSync.pullAndApply(
+                    currentPlus = plus.value,
+                    upsert = { plu -> dao.upsert(plu) },
+                    insertAudit = { audit -> auditDao.insert(audit) }
+                )
 
-                changedPluNumbers =
-                    pendingPluNumbers.toSet()
+                result.onSuccess { pluNumbers ->
+                    val pendingPluNumbers =
+                        auditDao.getPendingPriceChangePluNumbers()
 
-                if (pluNumbers.isNotEmpty()) {
+                    changedPluNumbers =
+                        pendingPluNumbers.toSet()
+
+                    if (pluNumbers.isNotEmpty()) {
+                        status =
+                            "Admin Push synced: ${pluNumbers.size} price(s)."
+                    }
+                }.onFailure { error ->
                     status =
-                        "Admin Push synced: ${pluNumbers.size} price(s)."
+                        "Admin Push sync FAILED: ${error.message ?: "Unknown error"}"
                 }
-            }.onFailure { error ->
-                status =
-                    "Admin Push sync FAILED: ${error.message ?: "Unknown error"}"
+            } finally {
+                adminPushSyncMutex.unlock()
             }
         }
     }
