@@ -1,12 +1,17 @@
 package com.mahamart.essae.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "price_change_audit")
+@Entity(
+    tableName = "price_change_audit",
+    indices = [Index(value = ["adminUpdateId", "pluNo"], unique = true)]
+)
 data class PriceChangeAudit(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val pluNo: Int,
+    val adminUpdateId: String? = null,
     val pluName: String,
     val oldPrice: Double,
     val newPrice: Double,
