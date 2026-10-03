@@ -59,7 +59,8 @@ class StoreAdminPushSync(private val context: Context) {
     suspend fun pullAndApply(
         currentPlus: List<Plu>,
         upsert: suspend (Plu) -> Unit,
-        insertAudit: suspend (PriceChangeAudit) -> Unit
+        insertAudit: suspend (PriceChangeAudit) -> Unit,
+        hasAdminAudit: suspend (String, Int) -> Boolean
     ): Result<List<Int>> = withContext(Dispatchers.IO) {
         runCatching {
             require(baseUrl.isNotBlank()) { "Supabase URL is missing." }
@@ -147,9 +148,13 @@ class StoreAdminPushSync(private val context: Context) {
 
                     upsert(plu)
 
-                    if (existing == null || existing.unitPrice != newPrice) {
+                    if (
+                        (existing == null || existing.unitPrice != newPrice) &&
+                        !hasAdminAudit(updateId, pluNo)
+                    ) {
                         insertAudit(
                             PriceChangeAudit(
+                                adminUpdateId = updateId,
                                 pluNo = plu.number,
                                 pluName = plu.name,
                                 oldPrice = existing?.unitPrice ?: 0.0,
@@ -188,9 +193,13 @@ class StoreAdminPushSync(private val context: Context) {
 
                                     put(
                                         JSONObject(item.toString())
+                                            .put("admin_update_id", updateId)
                                             .put(
                                                 "old_price",
-                                                existing?.unitPrice ?: 0.0
+                                                item.optDouble(
+                                                    "old_price",
+                                                    existing?.unitPrice ?: 0.0
+                                                )
                                             )
                                     )
                                 }
