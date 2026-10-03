@@ -242,8 +242,27 @@ class SupabaseAuth(context: Context) {
                     return JSONArray(response)
                 }
 
+                // Resolve manual audit rows by registered device ID. The legacy
+                // report's store_code is derived from store_ip_map, which may be
+                // unconfigured even when the device is correctly registered.
+                val deviceIds = if (store != null) {
+                    val deviceRows = getRows(
+                        "store_devices?select=device_id&store_id=eq.${store.id}&order=registered_at.desc"
+                    )
+                    buildList {
+                        for (i in 0 until deviceRows.length()) {
+                            deviceRows.getJSONObject(i).optString("device_id")
+                                .trim().takeIf { it.isNotBlank() }?.let(::add)
+                        }
+                    }.distinct()
+                } else emptyList()
+                val changesFilter = if (deviceIds.isNotEmpty()) {
+                    "device_id=in.(" + deviceIds.joinToString(",") + ")"
+                } else {
+                    "store_code=eq.$encoded"
+                }
                 val changes = getRows(
-                    "admin_price_change_report?select=plu_no,plu_name,old_price,new_price,status,source,changed_at,uploaded_at&store_code=eq.$encoded&order=changed_at.desc&limit=100"
+                    "admin_price_change_report?select=plu_no,plu_name,old_price,new_price,status,source,changed_at,uploaded_at,device_id&$changesFilter&order=changed_at.desc&limit=100"
                 )
                 val changeRows = buildList {
                     for (i in 0 until changes.length()) {
