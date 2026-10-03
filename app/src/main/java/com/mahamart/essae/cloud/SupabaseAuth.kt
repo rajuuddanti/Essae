@@ -313,21 +313,31 @@ class SupabaseAuth(context: Context) {
                 // physical-scale price. If the scale is already at the pushed price,
                 // the old Admin Push is no longer pending even when its historical
                 // report row has no uploaded_at.
-                val candidatePendingAdminPushes = pushRows
-                    .filter { it.status.equals("SYNCED", ignoreCase = true) && it.uploadedAt.isNullOrBlank() }
-                    .flatMap { push ->
-                        push.items.map { item ->
-                            PendingAdminPushItem(
-                                updateId = push.updateId,
-                                pluNo = item.pluNo,
-                                pluName = item.pluName,
-                                newPrice = item.newPrice,
-                                pushedAt = push.syncedAt ?: push.createdAt
-                            )
-                        }
+                // Select the newest push for each PLU before checking its status.
+                // Filtering SYNCED rows first can resurrect an older push after a
+                // newer push has already been physically uploaded.
+                val latestPushByPlu = pushRows
+                    .flatMap { push -> push.items.map { item -> push to item } }
+                    .groupBy { (_, item) -> item.pluNo }
+                    .mapNotNull { (_, rows) ->
+                        rows.maxByOrNull { (push, _) -> push.syncedAt ?: push.createdAt.orEmpty() }
                     }
-                    .groupBy { it.pluNo }
-                    .mapNotNull { (_, rows) -> rows.maxByOrNull { it.pushedAt.orEmpty() } }
+
+                val candidatePendingAdminPushes = latestPushByPlu.mapNotNull { (push, item) ->
+                    if (!push.status.equals("SYNCED", ignoreCase = true) ||
+                        !push.uploadedAt.isNullOrBlank()
+                    ) {
+                        null
+                    } else {
+                        PendingAdminPushItem(
+                            updateId = push.updateId,
+                            pluNo = item.pluNo,
+                            pluName = item.pluName,
+                            newPrice = item.newPrice,
+                            pushedAt = push.syncedAt ?: push.createdAt
+                        )
+                    }
+                }
 
                 val pendingAdminPushes = buildList {
                     for (candidate in candidatePendingAdminPushes) {
@@ -394,9 +404,8 @@ class SupabaseAuth(context: Context) {
 
                 val pendingUrl =
                     "$baseUrl/rest/v1/admin_price_change_report" +
-                        "?select=store_code,plu_no,new_price,changed_at" +
-                        "&status=eq.PENDING" +
-                        "&order=changed_at.desc"
+                        "?select=store_code,plu_no,new_price,status,changed_at,uploaded_at" +
+                        "&order=changed_at.desc&limit=1000"
                 val pendingConnection = open(pendingUrl, "GET", token)
                 val pendingResponse = readResponse(pendingConnection)
                 if (pendingConnection.responseCode !in 200..299) {
@@ -406,7 +415,17 @@ class SupabaseAuth(context: Context) {
                 // Keep the latest candidate price per store/SKU across audit and
                 // Admin Push history. Reconcile against physical scale price so
                 // stale SYNCED or PENDING report rows don't inflate operations.
-                val pendingPriceByStore = mutableMapOf<String, MutableMap<Int, Pair<String, Double>>>()
+                data class OperationsPriceCandidate(
+                    val at: String,
+                    val price: Double,
+                    val unresolved: Boolean
+                )
+
+                // Keep the latest event per store/PLU, including completed events.
+                // Otherwise an older PENDING/SYNCED row can reappear after a newer
+                // change or Admin Push has already been completed.
+                val pendingPriceByStore =
+                    mutableMapOf<String, MutableMap<Int, OperationsPriceCandidate>>()
                 val pendingRows = JSONArray(pendingResponse)
                 for (i in 0 until pendingRows.length()) {
                     val row = pendingRows.getJSONObject(i)
@@ -414,18 +433,18 @@ class SupabaseAuth(context: Context) {
                     val pluNo = row.optInt("plu_no", 0)
                     if (code.isBlank() || pluNo <= 0 || row.isNull("new_price")) continue
                     val at = row.optString("changed_at")
-                    val price = row.optDouble("new_price")
+                    val unresolved = row.optString("status").equals("PENDING", ignoreCase = true) &&
+                        row.isNull("uploaded_at")
+                    val candidate = OperationsPriceCandidate(at, row.optDouble("new_price"), unresolved)
                     val byPlu = pendingPriceByStore.getOrPut(code) { mutableMapOf() }
                     val previous = byPlu[pluNo]
-                    if (previous == null || at > previous.first) byPlu[pluNo] = at to price
+                    if (previous == null || at > previous.at) byPlu[pluNo] = candidate
                 }
 
                 val pendingPushUrl =
                     "$baseUrl/rest/v1/admin_price_push_report" +
                         "?select=store_code,items,status,uploaded_at,synced_at,created_at" +
-                        "&status=eq.SYNCED" +
-                        "&uploaded_at=is.null" +
-                        "&order=synced_at.desc"
+                        "&order=created_at.desc&limit=1000"
                 val pendingPushConnection = open(pendingPushUrl, "GET", token)
                 val pendingPushResponse = readResponse(pendingPushConnection)
                 if (pendingPushConnection.responseCode !in 200..299) {
@@ -440,16 +459,20 @@ class SupabaseAuth(context: Context) {
                     val pushedAt = row.optString("synced_at").ifBlank {
                         row.optString("created_at")
                     }
+                    val unresolved = row.optString("status").equals("SYNCED", ignoreCase = true) &&
+                        row.isNull("uploaded_at")
                     val items = row.optJSONArray("items") ?: continue
                     val byPlu = pendingPriceByStore.getOrPut(code) { mutableMapOf() }
                     for (j in 0 until items.length()) {
                         val item = items.optJSONObject(j) ?: continue
                         val pluNo = item.optInt("plu_no", 0)
                         if (pluNo <= 0 || item.isNull("new_price")) continue
-                        val price = item.optDouble("new_price")
+                        val candidate = OperationsPriceCandidate(
+                            pushedAt, item.optDouble("new_price"), unresolved
+                        )
                         val previous = byPlu[pluNo]
-                        if (previous == null || pushedAt > previous.first) {
-                            byPlu[pluNo] = pushedAt to price
+                        if (previous == null || pushedAt > previous.at) {
+                            byPlu[pluNo] = candidate
                         }
                     }
                 }
@@ -459,6 +482,7 @@ class SupabaseAuth(context: Context) {
                 for ((code, candidates) in pendingPriceByStore) {
                     var count = 0
                     for ((pluNo, candidate) in candidates) {
+                        if (!candidate.unresolved) continue
                         val prices = priceCache[pluNo] ?: run {
                             val fetched = getStorePluPrices(pluNo).getOrElse { emptyList() }
                             priceCache[pluNo] = fetched
@@ -466,7 +490,7 @@ class SupabaseAuth(context: Context) {
                         }
                         val physicalPrice = prices.firstOrNull { it.storeCode == code }?.scalePrice
                         val alreadyOnScale = physicalPrice != null &&
-                            kotlin.math.abs(physicalPrice - candidate.second) < 0.005
+                            kotlin.math.abs(physicalPrice - candidate.price) < 0.005
                         if (!alreadyOnScale) count++
                     }
                     pendingByStore[code] = count
