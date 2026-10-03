@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import com.google.firebase.messaging.FirebaseMessaging
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -539,8 +540,8 @@ class MainVm(
                             "Admin Push synced: ${pluNumbers.size} price(s)."
                     }
                 }.onFailure { error ->
-                    status =
-                        "Admin Push sync FAILED: ${error.message ?: "Unknown error"}"
+                    Log.w("AdminPushSync", "Admin Push sync failed", error)
+                    status = "CONNECTION ERROR"
                 }
             } finally {
                 adminPushSyncMutex.unlock()
