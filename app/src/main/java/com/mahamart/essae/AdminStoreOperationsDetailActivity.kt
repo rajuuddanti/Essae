@@ -153,11 +153,21 @@ private fun AdminStoreOperationsDetailScreen(
                             items(d.uploads) { row -> UploadCard(row) }
                         }
                     }
-                    else -> {
+                    2 -> {
                         if (d.pushes.isEmpty()) {
                             item { EmptyText("No Admin Push history.") }
                         } else {
                             items(d.pushes) { row -> PushCard(row) }
+                        }
+                    }
+                    else -> {
+                        val managerPushes = d.recentChanges.filter {
+                            it.source.equals("MANUAL", ignoreCase = true)
+                        }
+                        if (managerPushes.isEmpty()) {
+                            item { EmptyText("No Manager Push history.") }
+                        } else {
+                            items(managerPushes) { row -> PriceChangeCard(row) }
                         }
                     }
                 }
@@ -178,7 +188,8 @@ private fun StoreHistoryTabs(
     val tabs = listOf(
         "RECENT PRICE CHANGES",
         "UPLOAD HISTORY",
-        "ADMIN PUSH HISTORY"
+        "ADMIN PUSH HISTORY",
+        "MANAGER PUSH HISTORY"
     )
 
     ScrollableTabRow(
