@@ -61,15 +61,17 @@ class StoreAdminPushSync(private val context: Context) {
     suspend fun pullAndApply(
         currentPlus: List<Plu>,
         upsert: suspend (Plu) -> Unit,
+        readPrice: suspend (Int) -> Double?,
         insertAudit: suspend (PriceChangeAudit) -> Unit,
         hasAdminAudit: suspend (String, Int) -> Boolean
     ): Result<List<Int>> = adminPushPullMutex.withLock {
-        pullAndApplyLocked(currentPlus, upsert, insertAudit, hasAdminAudit)
+        pullAndApplyLocked(currentPlus, upsert, readPrice, insertAudit, hasAdminAudit)
     }
 
     private suspend fun pullAndApplyLocked(
         currentPlus: List<Plu>,
         upsert: suspend (Plu) -> Unit,
+        readPrice: suspend (Int) -> Double?,
         insertAudit: suspend (PriceChangeAudit) -> Unit,
         hasAdminAudit: suspend (String, Int) -> Boolean
     ): Result<List<Int>> = withContext(Dispatchers.IO) {
@@ -170,6 +172,10 @@ class StoreAdminPushSync(private val context: Context) {
                             )
                     )
                     upsert(plu)
+                    val savedPrice = readPrice(pluNo)
+                    check(savedPrice != null && kotlin.math.abs(savedPrice - newPrice) < 0.0001) {
+                        "Admin Push verification failed for PLU $pluNo: expected $newPrice, saved $savedPrice"
+                    }
                     latestPlus[pluNo] = plu
 
                     if (!hasAdminAudit(updateId, pluNo)) {
