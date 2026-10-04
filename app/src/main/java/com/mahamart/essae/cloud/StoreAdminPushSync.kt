@@ -7,6 +7,8 @@ import com.mahamart.essae.data.Plu
 import com.mahamart.essae.data.PriceChangeAudit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -61,6 +63,15 @@ class StoreAdminPushSync(private val context: Context) {
         upsert: suspend (Plu) -> Unit,
         insertAudit: suspend (PriceChangeAudit) -> Unit,
         hasAdminAudit: suspend (String, Int) -> Boolean
+    ): Result<List<Int>> = adminPushPullMutex.withLock {
+        pullAndApplyLocked(currentPlus, upsert, insertAudit, hasAdminAudit)
+    }
+
+    private suspend fun pullAndApplyLocked(
+        currentPlus: List<Plu>,
+        upsert: suspend (Plu) -> Unit,
+        insertAudit: suspend (PriceChangeAudit) -> Unit,
+        hasAdminAudit: suspend (String, Int) -> Boolean
     ): Result<List<Int>> = withContext(Dispatchers.IO) {
         runCatching {
             require(baseUrl.isNotBlank()) { "Supabase URL is missing." }
@@ -103,6 +114,8 @@ class StoreAdminPushSync(private val context: Context) {
 
             val updateIds = mutableListOf<String>()
             val appliedPluNumbers = linkedSetOf<Int>()
+            // Keep this snapshot current as multiple pushes for one PLU are applied.
+            val latestPlus = currentPlus.associateBy { it.number }.toMutableMap()
 
             for (i in 0 until rows.length()) {
                 val row = rows.getJSONObject(i)
@@ -126,9 +139,7 @@ class StoreAdminPushSync(private val context: Context) {
                     val newPrice = item.optDouble("new_price", Double.NaN)
                     if (pluNo < 0 || newPrice.isNaN()) continue
 
-                    val existing = currentPlus.firstOrNull {
-                        it.number == pluNo
-                    }
+                    val existing = latestPlus[pluNo]
 
                     val pushedCode = item.optString("plu_code").trim()
                     val resolvedCode = pushedCode.ifBlank {
@@ -147,6 +158,7 @@ class StoreAdminPushSync(private val context: Context) {
                     )
 
                     upsert(plu)
+                    latestPlus[pluNo] = plu
 
                     if (!hasAdminAudit(updateId, pluNo)) {
                         insertAudit(
@@ -171,6 +183,23 @@ class StoreAdminPushSync(private val context: Context) {
                 // Record the Admin Push as a pending store-price audit.
                 // The confirmed store price remains the physical scale
                 // upload result recorded by complete_scale_upload().
+                val auditItems = JSONArray().apply {
+                    itemList.forEach { item ->
+                        val pluNo = item.optInt("plu_no", -1)
+                        val existing = latestPlus[pluNo]
+                        put(
+                            JSONObject(item.toString())
+                                .put("admin_update_id", updateId)
+                                .put(
+                                    "old_price",
+                                    item.optDouble(
+                                        "old_price",
+                                        existing?.unitPrice ?: 0.0
+                                    )
+                                )
+                        )
+                    }
+                }
                 rpc(
                     "log_pending_price_changes",
                     JSONObject()
@@ -179,29 +208,7 @@ class StoreAdminPushSync(private val context: Context) {
                         .put("p_device_token", token)
                         .put("p_scale_ip", "")
                         .put("p_source", "ADMIN_PUSH")
-                        .put(
-                            "p_items",
-                            JSONArray().apply {
-                                items.forEach { item ->
-                                    val pluNo = item.optInt("plu_no", -1)
-                                    val existing = currentPlus.firstOrNull {
-                                        it.number == pluNo
-                                    }
-
-                                    put(
-                                        JSONObject(item.toString())
-                                            .put("admin_update_id", updateId)
-                                            .put(
-                                                "old_price",
-                                                item.optDouble(
-                                                    "old_price",
-                                                    existing?.unitPrice ?: 0.0
-                                                )
-                                            )
-                                    )
-                                }
-                            }
-                        )
+                        .put("p_items", auditItems)
                 )
 
                 updateIds += updateId
@@ -479,3 +486,7 @@ class StoreAdminPushSync(private val context: Context) {
         return response
     }
 }
+
+
+/** Process-wide serialization shared by the foreground VM and WorkManager worker. */
+private val adminPushPullMutex = Mutex()
