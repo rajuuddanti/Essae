@@ -52,6 +52,11 @@ abstract class AppDatabase : RoomDatabase() {
             context,
             AppDatabase::class.java,
             "essae.db"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+        )
+            // MainActivity and WorkManager may open separate Room instances.
+            // Broadcast invalidations so the PLU list refreshes when the worker writes.
+            .enableMultiInstanceInvalidation()
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .build()
     }
 }
