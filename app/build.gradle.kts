@@ -17,12 +17,19 @@ android {
         versionCode = 4
         versionName = "1.1.1"
 
-        val localProps = Properties().apply {
-            val f = rootProject.file("local.properties")
-            if (f.exists()) f.inputStream().use { load(it) }
+        val supabaseProps = Properties().apply {
+            val sharedFile = rootProject.file("supabase.properties")
+            if (sharedFile.exists()) sharedFile.inputStream().use { load(it) }
+            val localFile = rootProject.file("local.properties")
+            if (localFile.exists()) localFile.inputStream().use { load(it) }
         }
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL", "")}\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${localProps.getProperty("SUPABASE_PUBLISHABLE_KEY", "")}\"")
+        val supabaseUrl = supabaseProps.getProperty("SUPABASE_URL", "").trim()
+        val supabaseKey = supabaseProps.getProperty("SUPABASE_PUBLISHABLE_KEY", "").trim()
+        require(supabaseUrl.startsWith("https://") && supabaseKey.isNotBlank()) {
+            "Supabase configuration missing. Check supabase.properties or local.properties."
+        }
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
     }
     buildFeatures { compose = true; buildConfig = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.10" }
