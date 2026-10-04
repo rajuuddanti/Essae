@@ -134,6 +134,7 @@ class StoreAdminPushSync(private val context: Context) {
                     continue
                 }
 
+                val auditItems = JSONArray()
                 for (item in itemList) {
                     val pluNo = item.optInt("plu_no", -1)
                     val newPrice = item.optDouble("new_price", Double.NaN)
@@ -157,6 +158,17 @@ class StoreAdminPushSync(private val context: Context) {
                         unitPrice = newPrice
                     )
 
+                    auditItems.put(
+                        JSONObject(item.toString())
+                            .put("admin_update_id", updateId)
+                            .put(
+                                "old_price",
+                                item.optDouble(
+                                    "old_price",
+                                    existing?.unitPrice ?: 0.0
+                                )
+                            )
+                    )
                     upsert(plu)
                     latestPlus[pluNo] = plu
 
@@ -183,23 +195,6 @@ class StoreAdminPushSync(private val context: Context) {
                 // Record the Admin Push as a pending store-price audit.
                 // The confirmed store price remains the physical scale
                 // upload result recorded by complete_scale_upload().
-                val auditItems = JSONArray().apply {
-                    itemList.forEach { item ->
-                        val pluNo = item.optInt("plu_no", -1)
-                        val existing = latestPlus[pluNo]
-                        put(
-                            JSONObject(item.toString())
-                                .put("admin_update_id", updateId)
-                                .put(
-                                    "old_price",
-                                    item.optDouble(
-                                        "old_price",
-                                        existing?.unitPrice ?: 0.0
-                                    )
-                                )
-                        )
-                    }
-                }
                 rpc(
                     "log_pending_price_changes",
                     JSONObject()
