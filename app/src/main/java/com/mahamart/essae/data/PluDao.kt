@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 interface PluDao {
     @Query("SELECT * FROM plu ORDER BY number") fun observeAll(): Flow<List<Plu>>
     @Query("SELECT * FROM plu ORDER BY number") suspend fun getAll(): List<Plu>
+    @Query("SELECT unitPrice FROM plu WHERE number = :pluNo LIMIT 1") suspend fun getPrice(pluNo: Int): Double?
     @Query("SELECT COUNT(*) FROM plu") suspend fun count(): Int
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertAll(items: List<Plu>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(item: Plu)
