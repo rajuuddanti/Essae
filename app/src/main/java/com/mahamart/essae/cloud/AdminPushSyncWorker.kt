@@ -25,6 +25,7 @@ class AdminPushSyncWorker(
             val result = sync.pullAndApply(
                 currentPlus = pluDao.getAll(),
                 upsert = { pluDao.upsert(it) },
+                readPrice = { pluNo -> pluDao.getPrice(pluNo) },
                 insertAudit = { auditDao.insert(it) },
                 hasAdminAudit = { updateId, pluNo ->
                     auditDao.hasAdminPushAudit(updateId, pluNo)
