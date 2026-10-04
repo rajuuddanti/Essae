@@ -522,6 +522,7 @@ class MainVm(
                 val result = adminPushSync.pullAndApply(
                     currentPlus = plus.value,
                     upsert = { plu -> dao.upsert(plu) },
+                    readPrice = { pluNo -> dao.getPrice(pluNo) },
                     insertAudit = { audit -> auditDao.insert(audit) },
                     hasAdminAudit = { updateId, pluNo ->
                         auditDao.hasAdminPushAudit(updateId, pluNo)
