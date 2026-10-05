@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -1497,20 +1498,29 @@ fun EssaeApp(db: AppDatabase) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("The following prices were changed by Admin and are waiting for scale upload:")
-                    adminPushPriceChanges.forEach { change ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                change.pluName.ifBlank { "PLU ${change.pluNo}" },
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                "₹${formatPopupPrice(change.oldPrice)} → ₹${formatPopupPrice(change.newPrice)}",
-                                fontWeight = FontWeight.Bold
-                            )
+
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            adminPushPriceChanges,
+                            key = { it.id }
+                        ) { change ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    change.pluName.ifBlank { "PLU ${change.pluNo}" },
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    "₹${formatPopupPrice(change.oldPrice)} → ₹${formatPopupPrice(change.newPrice)}",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
