@@ -221,7 +221,20 @@ class MainVm(
         private set
 
     suspend fun getPendingAdminPushChanges(): List<PriceChangeAudit> =
-        auditDao.getPendingAdminPushChanges()
+        auditDao.getPendingAdminPushChanges().map { change ->
+            val baseline =
+                auditDao.getLatestUploadedPriceBefore(
+                    pluNo = change.pluNo,
+                    beforeChangedAt = change.changedAt,
+                    beforeId = change.id
+                )
+
+            if (baseline != null) {
+                change.copy(oldPrice = baseline)
+            } else {
+                change
+            }
+        }
 
     init {
         // Keep the red marker reactive to Room changes. This removes the
@@ -1492,7 +1505,7 @@ fun EssaeApp(db: AppDatabase) {
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
-                                "₹${change.oldPrice} => ₹${change.newPrice}",
+                                "₹${change.oldPrice} → ₹${change.newPrice}",
                                 fontWeight = FontWeight.Bold
                             )
                         }
