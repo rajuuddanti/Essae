@@ -114,13 +114,22 @@ class StoreAdminPushSync(private val context: Context) {
                 return@runCatching emptyList()
             }
 
+            // Always apply Admin Pushes in cloud creation order. The RPC normally
+            // returns this order, but enforce it locally so a network/proxy/database
+            // response cannot let an older push overwrite a newer push for the same PLU.
+            val orderedRows = (0 until rows.length())
+                .map { rows.getJSONObject(it) }
+                .sortedWith(
+                    compareBy<JSONObject> { it.optString("created_at") }
+                        .thenBy { it.optString("update_id") }
+                )
+
             val updateIds = mutableListOf<String>()
             val appliedPluNumbers = linkedSetOf<Int>()
             // Keep this snapshot current as multiple pushes for one PLU are applied.
             val latestPlus = currentPlus.associateBy { it.number }.toMutableMap()
 
-            for (i in 0 until rows.length()) {
-                val row = rows.getJSONObject(i)
+            for (row in orderedRows)
                 val updateId = row.optString("update_id").trim()
                 if (updateId.isBlank()) continue
 
