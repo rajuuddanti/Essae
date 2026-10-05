@@ -23,9 +23,7 @@ interface PriceChangeAuditDao {
     @Query("""
         SELECT a.pluNo
         FROM price_change_audit a
-        JOIN plu p ON p.number = a.pluNo
         WHERE a.status = 'PENDING'
-          AND ABS(a.newPrice - p.unitPrice) > 0.0001
           AND NOT EXISTS (
               SELECT 1
               FROM price_change_audit newer
@@ -44,9 +42,7 @@ interface PriceChangeAuditDao {
     @Query("""
         SELECT a.pluNo
         FROM price_change_audit a
-        JOIN plu p ON p.number = a.pluNo
         WHERE a.status = 'PENDING'
-          AND ABS(a.newPrice - p.unitPrice) > 0.0001
           AND NOT EXISTS (
               SELECT 1
               FROM price_change_audit newer
