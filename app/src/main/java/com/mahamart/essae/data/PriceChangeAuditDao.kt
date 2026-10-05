@@ -21,11 +21,23 @@ interface PriceChangeAuditDao {
     suspend fun getUnsynced(): List<PriceChangeAudit>
 
     @Query("""
-        SELECT DISTINCT a.pluNo
+        SELECT a.pluNo
         FROM price_change_audit a
         JOIN plu p ON p.number = a.pluNo
         WHERE a.status = 'PENDING'
           AND ABS(a.newPrice - p.unitPrice) > 0.0001
+          AND NOT EXISTS (
+              SELECT 1
+              FROM price_change_audit newer
+              WHERE newer.pluNo = a.pluNo
+                AND (
+                    newer.changedAt > a.changedAt
+                    OR (
+                        newer.changedAt = a.changedAt
+                        AND newer.id > a.id
+                    )
+                )
+          )
     """)
     suspend fun getPendingPriceChangePluNumbers(): List<Int>
 
