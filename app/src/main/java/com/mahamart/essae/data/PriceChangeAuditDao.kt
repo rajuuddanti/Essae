@@ -20,7 +20,13 @@ interface PriceChangeAuditDao {
     @Query("SELECT * FROM price_change_audit WHERE cloudSynced = 0 ORDER BY changedAt ASC")
     suspend fun getUnsynced(): List<PriceChangeAudit>
 
-    @Query("SELECT pluNo FROM price_change_audit WHERE status = 'PENDING'")
+    @Query("""
+        SELECT DISTINCT a.pluNo
+        FROM price_change_audit a
+        JOIN plu p ON p.number = a.pluNo
+        WHERE a.status = 'PENDING'
+          AND ABS(a.newPrice - p.unitPrice) > 0.0001
+    """)
     suspend fun getPendingPriceChangePluNumbers(): List<Int>
 
     @Query("UPDATE price_change_audit SET status = 'UPLOADED', uploadedAt = :uploadedAt WHERE status = 'PENDING'")
