@@ -63,7 +63,7 @@ interface PriceChangeAuditDao {
         JOIN plu p ON p.number = a.pluNo
         WHERE a.status = 'PENDING'
           AND a.source = 'ADMIN_PUSH'
-          AND ABS(a.newPrice - p.unitPrice) > 0.0001
+          AND ABS(a.newPrice - p.unitPrice) < 0.0001
           AND NOT EXISTS (
               SELECT 1
               FROM price_change_audit newer
