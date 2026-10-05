@@ -414,8 +414,16 @@ class MainVm(
                             plus = all
                         )
 
-                    auditDao.markAllPendingUploaded()
-                    changedPluNumbers = emptySet()
+                    // Mark only audits whose exact price was physically uploaded.
+                    // Older/different pending Admin Pushes must remain visible.
+                    all.forEach { plu ->
+                        auditDao.markUploaded(
+                            pluNo = plu.number,
+                            newPrice = plu.unitPrice
+                        )
+                    }
+                    changedPluNumbers =
+                        auditDao.getPendingPriceChangePluNumbers().toSet()
 
                     cloudResult.fold(
                         onSuccess = {
