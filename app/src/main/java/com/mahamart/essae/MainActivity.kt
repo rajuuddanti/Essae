@@ -1497,7 +1497,9 @@ fun EssaeApp(db: AppDatabase) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("The following prices were changed by Admin and are waiting for scale upload:")
+                    Text("New price updates: ${adminPushPriceChanges.size}")
+
+                    Text("The following SKUs are waiting for scale upload:")
 
                     LazyColumn(
                         modifier = Modifier.heightIn(max = 400.dp),
