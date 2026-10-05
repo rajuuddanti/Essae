@@ -90,6 +90,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 
+private fun formatPopupPrice(price: Double): String =
+    java.math.BigDecimal.valueOf(price).stripTrailingZeros().toPlainString()
+
 private const val CLEAR_PLU_PIN = "3331"
 
 class MainActivity : ComponentActivity() {
@@ -1505,7 +1508,7 @@ fun EssaeApp(db: AppDatabase) {
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
-                                "₹${change.oldPrice} → ₹${change.newPrice}",
+                                "₹${formatPopupPrice(change.oldPrice)} → ₹${formatPopupPrice(change.newPrice)}",
                                 fontWeight = FontWeight.Bold
                             )
                         }
