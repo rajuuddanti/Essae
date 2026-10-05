@@ -82,6 +82,27 @@ interface PriceChangeAuditDao {
     """)
     suspend fun getPendingAdminPushChanges(): List<PriceChangeAudit>
 
+    @Query("""
+        SELECT newPrice
+        FROM price_change_audit
+        WHERE pluNo = :pluNo
+          AND status = 'UPLOADED'
+          AND (
+              changedAt < :beforeChangedAt
+              OR (
+                  changedAt = :beforeChangedAt
+                  AND id < :beforeId
+              )
+          )
+        ORDER BY changedAt DESC, id DESC
+        LIMIT 1
+    """)
+    suspend fun getLatestUploadedPriceBefore(
+        pluNo: Int,
+        beforeChangedAt: Long,
+        beforeId: Long
+    ): Double?
+
     @Query("UPDATE price_change_audit SET status = 'UPLOADED', uploadedAt = :uploadedAt WHERE status = 'PENDING'")
     suspend fun markAllPendingUploaded(uploadedAt: Long = System.currentTimeMillis())
 
