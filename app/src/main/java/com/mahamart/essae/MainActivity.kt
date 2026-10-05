@@ -538,41 +538,44 @@ class MainVm(
 
     private val adminPushSyncMutex = Mutex()
 
-    fun syncAdminPush() {
-        viewModelScope.launch(crashSafeHandler) {
-            // Timer, startup, and resume can trigger sync together.
-            // Skip this attempt while another Admin Push sync is active.
-            if (!adminPushSyncMutex.tryLock()) return@launch
+    suspend fun syncAdminPush() {
+        // This is suspend so callers can wait until the Admin Push sync has
+        // fully completed before reading pending audit rows.
+        if (!adminPushSyncMutex.tryLock()) return
 
-            try {
-                val result = adminPushSync.pullAndApply(
-                    currentPlus = plus.value,
-                    upsert = { plu -> dao.upsert(plu) },
-                    readPrice = { pluNo -> dao.getPrice(pluNo) },
-                    insertAudit = { audit -> auditDao.insert(audit) },
-                    hasAdminAudit = { updateId, pluNo ->
-                        auditDao.hasAdminPushAudit(updateId, pluNo)
-                    }
-                )
-
-                result.onSuccess { pluNumbers ->
-                    val pendingPluNumbers =
-                        auditDao.getPendingPriceChangePluNumbers()
-
-                    changedPluNumbers =
-                        pendingPluNumbers.toSet()
-
-                    if (pluNumbers.isNotEmpty()) {
-                        status =
-                            "Admin Push synced: ${pluNumbers.size} price(s)."
-                    }
-                }.onFailure { error ->
-                    Log.w("AdminPushSync", "Admin Push sync failed", error)
-                    status = "CONNECTION ERROR"
+        try {
+            val result = adminPushSync.pullAndApply(
+                currentPlus = plus.value,
+                upsert = { plu -> dao.upsert(plu) },
+                readPrice = { pluNo -> dao.getPrice(pluNo) },
+                insertAudit = { audit -> auditDao.insert(audit) },
+                hasAdminAudit = { updateId, pluNo ->
+                    auditDao.hasAdminPushAudit(updateId, pluNo)
                 }
-            } finally {
-                adminPushSyncMutex.unlock()
+            )
+
+            result.onSuccess { pluNumbers ->
+                val pendingPluNumbers =
+                    auditDao.getPendingPriceChangePluNumbers()
+
+                changedPluNumbers =
+                    pendingPluNumbers.toSet()
+
+                if (pluNumbers.isNotEmpty()) {
+                    status =
+                        "Admin Push synced: ${pluNumbers.size} price(s)."
+                }
+            }.onFailure { error ->
+                Log.w("AdminPushSync", "Admin Push sync failed", error)
+                status = "CONNECTION ERROR"
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("AdminPushSync", "Admin Push sync failed", e)
+            status = "CONNECTION ERROR"
+        } finally {
+            adminPushSyncMutex.unlock()
         }
     }
 
