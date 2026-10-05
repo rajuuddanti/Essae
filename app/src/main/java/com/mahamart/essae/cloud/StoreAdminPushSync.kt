@@ -29,6 +29,7 @@ class StoreAdminPushSync(private val context: Context) {
     private val appContext = context.applicationContext
     private val baseUrl = BuildConfig.SUPABASE_URL.trimEnd('/')
     private val publishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
+    private var lastConfirmedReconcileAt = 0L
 
     private val registrationPrefs =
         appContext.getSharedPreferences(
@@ -111,6 +112,59 @@ class StoreAdminPushSync(private val context: Context) {
             }
 
             if (rows.length() == 0) {
+                // The cloud may have no actionable Admin Push left while Room still
+                // contains an older price from a previous sync. Reconcile only
+                // periodically so the 10-second poll does not hammer Supabase.
+                val now = System.currentTimeMillis()
+                if (now - lastConfirmedReconcileAt >= 60_000L && currentPlus.isNotEmpty()) {
+                    val localItems = JSONArray()
+                    currentPlus.forEach { plu ->
+                        localItems.put(
+                            JSONObject()
+                                .put("plu_no", plu.number)
+                                .put("unit_price", plu.unitPrice)
+                        )
+                    }
+
+                    val confirmed = rpc(
+                        "store_reconcile_confirmed_prices_v2",
+                        JSONObject()
+                            .put("p_device_id", id)
+                            .put("p_device_token", token)
+                            .put("p_items", localItems)
+                    )
+
+                    val confirmedRows = when (
+                        val value = JSONTokener(confirmed.ifBlank { "[]" }).nextValue()
+                    ) {
+                        is JSONArray -> value
+                        is JSONObject -> JSONArray().put(value)
+                        else -> JSONArray()
+                    }
+
+                    val reconciled = mutableListOf<Int>()
+                    for (index in 0 until confirmedRows.length()) {
+                        val row = confirmedRows.getJSONObject(index)
+                        val pluNo = row.optInt("plu_no", -1)
+                        val masterPrice = row.optDouble("master_price", Double.NaN)
+                        if (pluNo < 0 || masterPrice.isNaN()) continue
+
+                        val existing = currentPlus.firstOrNull { it.number == pluNo }
+                            ?: continue
+
+                        val corrected = existing.copy(unitPrice = masterPrice)
+                        upsert(corrected)
+                        val saved = readPrice(pluNo)
+                        check(saved != null && kotlin.math.abs(saved - masterPrice) < 0.0001) {
+                            "Confirmed-price reconciliation failed for PLU $pluNo: expected $masterPrice, saved $saved"
+                        }
+                        reconciled += pluNo
+                    }
+
+                    lastConfirmedReconcileAt = now
+                    return@runCatching reconciled
+                }
+
                 return@runCatching emptyList()
             }
 
