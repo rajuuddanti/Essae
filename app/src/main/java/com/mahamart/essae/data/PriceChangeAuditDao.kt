@@ -41,6 +41,27 @@ interface PriceChangeAuditDao {
     """)
     suspend fun getPendingPriceChangePluNumbers(): List<Int>
 
+    @Query("""
+        SELECT a.pluNo
+        FROM price_change_audit a
+        JOIN plu p ON p.number = a.pluNo
+        WHERE a.status = 'PENDING'
+          AND ABS(a.newPrice - p.unitPrice) > 0.0001
+          AND NOT EXISTS (
+              SELECT 1
+              FROM price_change_audit newer
+              WHERE newer.pluNo = a.pluNo
+                AND (
+                    newer.changedAt > a.changedAt
+                    OR (
+                        newer.changedAt = a.changedAt
+                        AND newer.id > a.id
+                    )
+                )
+          )
+    """)
+    fun observePendingPriceChangePluNumbers(): Flow<List<Int>>
+
     @Query("UPDATE price_change_audit SET status = 'UPLOADED', uploadedAt = :uploadedAt WHERE status = 'PENDING'")
     suspend fun markAllPendingUploaded(uploadedAt: Long = System.currentTimeMillis())
 
