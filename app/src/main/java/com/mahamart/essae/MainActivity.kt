@@ -219,6 +219,9 @@ class MainVm(
     )
         private set
 
+    suspend fun getPendingAdminPushChanges(): List<PriceChangeAudit> =
+        auditDao.getPendingAdminPushChanges()
+
     init {
         // Keep the red marker reactive to Room changes. This removes the
         // dependency on the Admin Push network call finishing before the UI
