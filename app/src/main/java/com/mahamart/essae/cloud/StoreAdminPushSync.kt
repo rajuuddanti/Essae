@@ -129,7 +129,7 @@ class StoreAdminPushSync(private val context: Context) {
             // Keep this snapshot current as multiple pushes for one PLU are applied.
             val latestPlus = currentPlus.associateBy { it.number }.toMutableMap()
 
-            for (row in orderedRows)
+            for (row in orderedRows) {
                 val updateId = row.optString("update_id").trim()
                 if (updateId.isBlank()) continue
 
