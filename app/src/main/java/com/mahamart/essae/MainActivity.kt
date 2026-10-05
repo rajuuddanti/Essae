@@ -204,17 +204,6 @@ class MainVm(
     private val appContext = context.applicationContext
     private val adminPushSync = StoreAdminPushSync(appContext)
 
-    init {
-        // Keep the red marker reactive to Room changes. This removes the
-        // dependency on the Admin Push network call finishing before the UI
-        // reflects a newly applied price.
-        viewModelScope.launch {
-            auditDao.observePendingPriceChangePluNumbers()
-                .collect { pending ->
-                    changedPluNumbers = pending.toSet()
-                }
-        }
-    }
     private val crashSafeHandler = CoroutineExceptionHandler { _, throwable ->
         if (throwable is CancellationException) return@CoroutineExceptionHandler
         status = "Operation failed safely: " +
@@ -229,6 +218,18 @@ class MainVm(
         emptySet<Int>()
     )
         private set
+
+    init {
+        // Keep the red marker reactive to Room changes. This removes the
+        // dependency on the Admin Push network call finishing before the UI
+        // reflects a newly applied price.
+        viewModelScope.launch {
+            auditDao.observePendingPriceChangePluNumbers()
+                .collect { pending ->
+                    changedPluNumbers = pending.toSet()
+                }
+        }
+    }
 
     fun updateHost(v: String) {
         host = v
