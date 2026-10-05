@@ -56,6 +56,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -725,12 +726,33 @@ fun EssaeApp(db: AppDatabase) {
         mutableStateOf(false)
     }
 
+    var showAdminPushPriceDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var adminPushPriceChanges by remember {
+        mutableStateOf(emptyList<PriceChangeAudit>())
+    }
+
+    val popupScope = rememberCoroutineScope()
+
+    fun refreshAdminPushPopup() {
+        popupScope.launch {
+            vm.syncAdminPush()
+            val pending = vm.getPendingAdminPushChanges()
+            if (pending.isNotEmpty()) {
+                adminPushPriceChanges = pending
+                showAdminPushPriceDialog = true
+            }
+        }
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                vm.syncAdminPush()
+                refreshAdminPushPopup()
                 val prefs = context.getSharedPreferences(
                     "store_device_registration",
                     Context.MODE_PRIVATE
@@ -1443,6 +1465,47 @@ fun EssaeApp(db: AppDatabase) {
         }
     }
 
+    if (showAdminPushPriceDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAdminPushPriceDialog = false
+            },
+            title = {
+                Text("ADMIN PRICE UPDATE")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("The following prices were changed by Admin and are waiting for scale upload:")
+                    adminPushPriceChanges.forEach { change ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                change.pluName.ifBlank { "PLU ${change.pluNo}" },
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                "₹${change.oldPrice} => ₹${change.newPrice}",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    colors = mahaMartButtonColors(),
+                    onClick = { showAdminPushPriceDialog = false }
+                ) {
+                    Text("OK")
+                }
+            }
+        )
+    }
     if (showImportCsvDialog) {
         AlertDialog(
             onDismissRequest = {
